@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DATA-AGENT · 数据分析工作台</title>
+  <link rel="icon" type="image/svg+xml" href="/safe-analysis/assets/favicon.svg">
+  <link rel="stylesheet" href="/safe-analysis/assets/app.css">
+  <script defer src="/safe-analysis/assets/marked.umd.js"></script>
+  <script defer src="/safe-analysis/assets/purify.min.js"></script>
+  <script type="module" src="/safe-analysis/assets/app.js"></script>
+</head>
+<body>
+  <aside id="navigation" class="sidebar" aria-label="主导航">
+    <a class="brand" href="/safe-analysis/" aria-label="DATA-AGENT 首页"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 17V7m7 10V4m7 13v-7"/></svg><span>DATA-AGENT</span></a>
+    <button id="new-analysis" class="button new-analysis" type="button">新建分析</button>
+    <nav>
+      <a class="nav-item active" href="/safe-analysis/" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v16h16M8 15v-4m5 4V7m5 8v-6"/></svg>分析工作台</a>
+      <a class="nav-item" href="/construct/database/"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 4 16 4 16 0V5M4 12c0 4 16 4 16 0"/></svg>数据源</a>
+      <a class="nav-item" href="/construct/knowledge/"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6c-3-3-7-3-9-2v15c3-1 6-1 9 2 3-3 6-3 9-2V4c-3-1-6-1-9 2v15"/></svg>知识库</a>
+      <a class="nav-item" href="/construct/skills/"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5ZM3 12l9 5 9-5M3 16l9 5 9-5"/></svg>Skills</a>
+      <a class="nav-item" href="/?classic=1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11a9 9 0 0 1-9 9 10 10 0 0 1-4-.8L3 21l1.8-5A10 10 0 0 1 3 12a9 9 0 0 1 18-1Z"/></svg>原版对话</a>
+    </nav>
+    <div class="sidebar-bottom"><span class="status-dot"></span>受控查询工作台<button id="disconnect" type="button" class="text-button" hidden>断开连接</button></div>
+  </aside>
+
+  <main class="workspace">
+    <header class="topbar">
+      <div><h1>DATA-AGENT</h1><p>分析工作台 · 查询数据，理解业务</p></div>
+      <div class="header-controls"><div id="connection-status" class="connection-status">尚未连接</div><button id="toggle-navigation" class="button secondary nav-toggle" type="button" aria-expanded="false" aria-controls="navigation">菜单</button></div>
+    </header>
+
+    <section id="connect-panel" class="connect-panel" aria-labelledby="connect-title">
+      <div class="connect-copy"><h2 id="connect-title">连接 DATA-AGENT</h2><p>输入启动时显示的访问令牌，加载你的数据源。</p><p class="muted">令牌用于确认数据访问权限，与模型供应商的 API Key 无关。</p></div>
+      <form id="connect-form">
+        <label for="access-token">工作台令牌</label>
+        <div class="connect-controls"><input id="access-token" type="password" autocomplete="off" spellcheck="false" placeholder="粘贴工作台令牌" required><button id="connect-button" class="button primary" type="submit">连接工作台</button></div>
+        <p id="connect-error" class="form-error" role="alert"></p>
+      </form>
+    </section>
+
+    <div id="analysis-layout" class="analysis-layout" hidden>
+      <aside class="data-panel" aria-label="分析范围">
+        <label class="field-label" for="source">数据源</label>
+        <select id="source"></select>
+        <div id="source-summary" class="source-summary"></div>
+        <div class="section-title"><h2>可用表与字段</h2><span id="table-count"></span></div>
+        <div id="schema-list" class="schema-list"></div>
+        <h2 class="panel-heading">指标口径</h2><ul id="metric-list" class="metric-list"></ul>
+        <div class="retrieval-info"><h2>业务知识检索</h2><p id="retrieval-label"></p><p id="index-status" class="muted"></p><button id="check-retrieval" type="button" class="button secondary">检查知识检索</button></div>
+        <p class="scope-note">仅查询当前授权范围。模型生成的 SQL 仍需经过权限与成本检查。</p>
+      </aside>
+
+      <section class="analysis-main" aria-label="分析与结果">
+        <section class="question-panel">
+          <form id="question-form">
+            <label for="question" class="question-label">你想了解什么？</label>
+            <textarea id="question" rows="3" maxlength="4000" placeholder="例如：按区域统计 2026 年 1 月的有效销售额，比较各区域的差异。" required></textarea>
+            <div class="question-options"><div class="skill-control"><label for="skill">分析方法</label><select id="skill"><option value="general">通用分析</option><option value="comparison">维度对比</option><option value="trend">趋势分析</option></select></div><label class="checkbox-label"><input id="explain" type="checkbox" checked>解释查询结果</label><div class="submit-controls"><button id="stop" class="button secondary" type="button" hidden>停止</button><button id="submit" class="button primary" type="submit">开始分析</button></div></div>
+          </form>
+          <div class="suggestions"><button type="button" data-question="按区域统计2026年1月的有效销售额">比较区域销售额</button><button type="button" data-question="统计2026年1月每日的有效销售额，按日期排序">查看每日销售趋势</button><button id="demo-query" type="button">查看一条示例记录</button></div>
+        </section>
+
+        <section id="activity" class="activity" hidden aria-label="执行进度"><div id="activity-status" role="status" aria-live="polite"></div><ol id="stages" class="stages"><li data-stage="retrieval">知识检索</li><li data-stage="generation">生成 SQL</li><li data-stage="validation">权限校验</li><li data-stage="cost_check">成本检查</li><li data-stage="execution">执行查询</li><li data-stage="explanation">结果解释</li></ol></section>
+        <div id="feedback" class="feedback" role="alert" hidden></div>
+
+        <section id="confirmation" class="confirmation" hidden aria-labelledby="confirmation-title">
+          <h2 id="confirmation-title">执行前需要你确认</h2><p>这条查询可能消耗较多资源。请核对 SQL 和风险原因后决定是否执行。</p><ul id="risk-reasons"></ul><pre id="confirmation-sql" class="sql-code"></pre><p id="confirmation-expiry" class="muted"></p><div class="confirmation-actions"><button id="reject" type="button" class="button secondary">取消本次查询</button><button id="approve" type="button" class="button primary">确认并执行</button></div>
+        </section>
+
+        <section id="empty-state" class="empty-state"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 9v30h32M16 31V21m10 10V13m10 18V18"/></svg><h2>让数据回答你的问题</h2><p>选定数据源，描述指标、时间范围与分组维度。<br>分析完成后，可以在这里核对 SQL、表格与图表。</p></section>
+
+        <section id="output" class="output" hidden>
+          <div class="result-tabs" role="tablist" aria-label="分析内容"><button type="button" role="tab" aria-selected="true" aria-controls="result-panel" id="tab-result" data-tab="result">分析结果</button><button type="button" role="tab" aria-selected="false" aria-controls="sql-panel" id="tab-sql" data-tab="sql">查询 SQL</button><button type="button" role="tab" aria-selected="false" aria-controls="evidence-panel" id="tab-evidence" data-tab="evidence">检索依据</button></div>
+          <section id="result-panel" role="tabpanel" aria-labelledby="tab-result"><p id="result-placeholder" class="muted">正在处理，查询结果将在这里显示。</p><div id="result-content" hidden><div class="result-toolbar"><p id="result-summary"></p><button id="download" type="button" class="button secondary">导出 CSV</button></div><div id="result-table" class="table-scroll"></div><div id="chart" class="chart" hidden></div><article id="explanation" class="markdown" hidden></article></div></section>
+          <section id="sql-panel" role="tabpanel" aria-labelledby="tab-sql" hidden><div class="result-toolbar"><p class="muted">通过校验后实际提交的 SQL</p><button id="copy-sql" type="button" class="button secondary">复制 SQL</button></div><pre id="sql" class="sql-code">尚未生成 SQL。</pre></section>
+          <section id="evidence-panel" role="tabpanel" aria-labelledby="tab-evidence" hidden><p class="muted">本次召回的授权表结构、指标与业务文档。</p><div id="evidence"></div></section>
+        </section>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

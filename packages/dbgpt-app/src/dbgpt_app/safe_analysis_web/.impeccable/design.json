@@ -1,0 +1,299 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-13T08:56:58.222Z",
+  "title": "Design System: DATA-AGENT",
+  "extensions": {
+    "colorMeta": {
+      "background": {
+        "role": "neutral",
+        "displayName": "工作白",
+        "tonalRamp": [
+          "oklch(15% 0.0000 0)",
+          "oklch(27% 0.0000 0)",
+          "oklch(39% 0.0000 0)",
+          "oklch(51% 0.0000 0)",
+          "oklch(63% 0.0000 0)",
+          "oklch(75% 0.0000 0)",
+          "oklch(87% 0.0000 0)",
+          "oklch(95% 0.0000 0)"
+        ]
+      },
+      "sidebar": {
+        "role": "neutral",
+        "displayName": "导航浅灰",
+        "tonalRamp": [
+          "oklch(15% 0.0008 280)",
+          "oklch(27% 0.0020 280)",
+          "oklch(39% 0.0027 280)",
+          "oklch(51% 0.0030 280)",
+          "oklch(63% 0.0029 280)",
+          "oklch(75% 0.0021 280)",
+          "oklch(87% 0.0010 280)",
+          "oklch(95% 0.0004 280)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "代码浅灰",
+        "tonalRamp": [
+          "oklch(15% 0.0010 280)",
+          "oklch(27% 0.0026 280)",
+          "oklch(39% 0.0036 280)",
+          "oklch(51% 0.0040 280)",
+          "oklch(63% 0.0038 280)",
+          "oklch(75% 0.0028 280)",
+          "oklch(87% 0.0014 280)",
+          "oklch(95% 0.0005 280)"
+        ]
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "正文墨灰",
+        "tonalRamp": [
+          "oklch(15% 0.0037 280)",
+          "oklch(27% 0.0097 280)",
+          "oklch(39% 0.0135 280)",
+          "oklch(51% 0.0150 280)",
+          "oklch(63% 0.0142 280)",
+          "oklch(75% 0.0105 280)",
+          "oklch(87% 0.0052 280)",
+          "oklch(95% 0.0018 280)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "辅助灰",
+        "tonalRamp": [
+          "oklch(15% 0.0037 280)",
+          "oklch(27% 0.0097 280)",
+          "oklch(39% 0.0135 280)",
+          "oklch(51% 0.0150 280)",
+          "oklch(63% 0.0142 280)",
+          "oklch(75% 0.0105 280)",
+          "oklch(87% 0.0052 280)",
+          "oklch(95% 0.0018 280)"
+        ]
+      },
+      "divider": {
+        "role": "neutral",
+        "displayName": "分隔灰",
+        "tonalRamp": [
+          "oklch(15% 0.0015 280)",
+          "oklch(27% 0.0039 280)",
+          "oklch(39% 0.0054 280)",
+          "oklch(51% 0.0060 280)",
+          "oklch(63% 0.0057 280)",
+          "oklch(75% 0.0042 280)",
+          "oklch(87% 0.0021 280)",
+          "oklch(95% 0.0007 280)"
+        ]
+      },
+      "primary": {
+        "role": "primary",
+        "displayName": "工作紫靛",
+        "tonalRamp": [
+          "oklch(15% 0.0400 280)",
+          "oklch(27% 0.1040 280)",
+          "oklch(39% 0.1440 280)",
+          "oklch(51% 0.1600 280)",
+          "oklch(63% 0.1520 280)",
+          "oklch(75% 0.1120 280)",
+          "oklch(87% 0.0560 280)",
+          "oklch(95% 0.0192 280)"
+        ]
+      },
+      "primary-soft": {
+        "role": "primary",
+        "displayName": "浅紫靛底",
+        "tonalRamp": [
+          "oklch(15% 0.0063 280)",
+          "oklch(27% 0.0163 280)",
+          "oklch(39% 0.0225 280)",
+          "oklch(51% 0.0250 280)",
+          "oklch(63% 0.0238 280)",
+          "oklch(75% 0.0175 280)",
+          "oklch(87% 0.0087 280)",
+          "oklch(95% 0.0030 280)"
+        ]
+      },
+      "primary-hover": {
+        "role": "primary",
+        "displayName": "深紫靛交互",
+        "tonalRamp": [
+          "oklch(15% 0.0375 280)",
+          "oklch(27% 0.0975 280)",
+          "oklch(39% 0.1350 280)",
+          "oklch(51% 0.1500 280)",
+          "oklch(63% 0.1425 280)",
+          "oklch(75% 0.1050 280)",
+          "oklch(87% 0.0525 280)",
+          "oklch(95% 0.0180 280)"
+        ]
+      },
+      "navigation-dark": {
+        "role": "neutral",
+        "displayName": "导航深墨",
+        "tonalRamp": [
+          "oklch(15% 0.0075 270)",
+          "oklch(27% 0.0195 270)",
+          "oklch(39% 0.0270 270)",
+          "oklch(51% 0.0300 270)",
+          "oklch(63% 0.0285 270)",
+          "oklch(75% 0.0210 270)",
+          "oklch(87% 0.0105 270)",
+          "oklch(95% 0.0036 270)"
+        ]
+      },
+      "error": {
+        "role": "semantic",
+        "displayName": "错误红",
+        "tonalRamp": [
+          "oklch(15% 0.0400 30)",
+          "oklch(27% 0.1040 30)",
+          "oklch(39% 0.1440 30)",
+          "oklch(51% 0.1600 30)",
+          "oklch(63% 0.1520 30)",
+          "oklch(75% 0.1120 30)",
+          "oklch(87% 0.0560 30)",
+          "oklch(95% 0.0192 30)"
+        ]
+      },
+      "success": {
+        "role": "semantic",
+        "displayName": "完成绿",
+        "tonalRamp": [
+          "oklch(15% 0.0250 155)",
+          "oklch(27% 0.0650 155)",
+          "oklch(39% 0.0900 155)",
+          "oklch(51% 0.1000 155)",
+          "oklch(63% 0.0950 155)",
+          "oklch(75% 0.0700 155)",
+          "oklch(87% 0.0350 155)",
+          "oklch(95% 0.0120 155)"
+        ]
+      }
+    },
+    "tonalRampBasis": "Synthesized OKLCH preview ramps only; implementation colors remain normative in DESIGN.md frontmatter. These preview ramps are not shipped CSS tokens.",
+    "shadows": [],
+    "motion": [
+      {
+        "name": "button-state",
+        "value": "background .15s, color .15s",
+        "purpose": "按钮背景和文字色状态过渡，缓动使用 CSS 默认 ease。"
+      }
+    ],
+    "focus": [
+      {
+        "name": "keyboard",
+        "value": "outline:2px solid var(--focus); outline-offset:3px",
+        "purpose": "按钮、链接和字段统一焦点。"
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact-desktop",
+        "value": "1200px"
+      },
+      {
+        "name": "hide-sidebar",
+        "value": "900px"
+      },
+      {
+        "name": "stacked",
+        "value": "680px"
+      }
+    ],
+    "source": {
+      "stylesheet": "assets/app.css",
+      "markup": "assets/index.html",
+      "scope": "safe_analysis_web only"
+    }
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "开始分析与确认执行的主操作。",
+      "html": "<button class=\"ds-primary\">开始分析</button>",
+      "css": ".ds-primary{font:14px/1.65 -apple-system,BlinkMacSystemFont,\"Segoe UI\",\"Microsoft YaHei\",sans-serif;background:var(--blue,#5356c8);color:#fff;padding:8px 16px;border:1px solid transparent;border-radius:6px;font-weight:550;cursor:pointer;transition:background .15s,color .15s}.ds-primary:hover:not(:disabled){background:#4447ab}.ds-primary:disabled{opacity:.5;cursor:not-allowed}.ds-primary:focus-visible{outline:2px solid var(--focus,#5356c8);outline-offset:3px}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "复制与导出等次要操作。",
+      "html": "<button class=\"ds-secondary\">导出 CSV</button>",
+      "css": ".ds-secondary{font:14px/1.65 -apple-system,BlinkMacSystemFont,\"Segoe UI\",\"Microsoft YaHei\",sans-serif;background:var(--bg,#fff);color:var(--text,#252630);padding:8px 16px;border:1px solid #dedee5;border-radius:6px;font-weight:550;cursor:pointer;transition:background .15s,color .15s}.ds-secondary:hover:not(:disabled){background:var(--surface,#f8f8fa)}.ds-secondary:disabled{opacity:.5;cursor:not-allowed}.ds-secondary:focus-visible{outline:2px solid var(--focus,#5356c8);outline-offset:3px}"
+    },
+    {
+      "name": "Active Navigation",
+      "kind": "nav",
+      "refersTo": "nav-active",
+      "description": "当前分析工作台导航。900px及以下侧栏默认收起，通过顶栏菜单按钮展开，保留新建分析、连接后的断开连接及全部导航入口；aria-controls关联navigation，aria-expanded同步展开状态，Escape、新建分析或断开连接会关闭菜单。",
+      "html": "<a class=\"ds-nav\" href=\"#\" aria-current=\"page\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 4v16h16M8 15v-4m5 4V7m5 8v-6\"/></svg>分析工作台</a>",
+      "css": ".ds-nav{font:14px/1.65 -apple-system,BlinkMacSystemFont,\"Segoe UI\",\"Microsoft YaHei\",sans-serif;display:flex;align-items:center;gap:12px;border-radius:6px;padding:9px 10px;margin:3px 0;background:var(--blue-soft,#eeeef8);color:var(--blue,#5356c8);font-weight:600;text-decoration:none}.ds-nav:hover{background:#edf0f5}.ds-nav svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.ds-nav:focus-visible{outline:2px solid var(--focus,#5356c8);outline-offset:3px}"
+    },
+    {
+      "name": "Token Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "工作台连接令牌字段。",
+      "html": "<label class=\"ds-label\" for=\"ds-token\">工作台令牌</label><input class=\"ds-input\" id=\"ds-token\" type=\"password\" placeholder=\"粘贴工作台令牌\">",
+      "css": ".ds-label{font:14px/1.65 -apple-system,BlinkMacSystemFont,\"Segoe UI\",\"Microsoft YaHei\",sans-serif;display:block;font-weight:550;margin-bottom:8px;color:var(--text,#252630)}.ds-input{font:14px/1.65 -apple-system,BlinkMacSystemFont,\"Segoe UI\",\"Microsoft YaHei\",sans-serif;border:1px solid #d7dee8;border-radius:8px;background:var(--bg,#fff);color:var(--text,#252630);padding:9px 11px;min-width:0}.ds-input::placeholder{color:#677487;opacity:1}.ds-input:focus-visible{outline:2px solid var(--focus,#5356c8);outline-offset:3px}"
+    },
+    {
+      "name": "SQL Block",
+      "kind": "custom",
+      "refersTo": "sql-block",
+      "description": "实际查询语句的等宽阅读区。",
+      "html": "<pre class=\"ds-sql\">SELECT region, SUM(amount)\nFROM sales_demo\nGROUP BY region;</pre>",
+      "css": ".ds-sql{background:var(--surface,#f8f8fa);color:var(--text,#252630);padding:18px;border-radius:8px;font:12px/1.8 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;max-height:340px;overflow:auto}"
+    },
+    {
+      "name": "Execution Confirmation",
+      "kind": "card",
+      "description": "需要确认风险的内嵌面板。",
+      "html": "<section class=\"ds-confirm\"><h2>执行前需要你确认</h2><p>请核对 SQL 和风险原因后决定是否执行。</p></section>",
+      "css": ".ds-confirm{font:14px/1.65 -apple-system,BlinkMacSystemFont,\"Segoe UI\",\"Microsoft YaHei\",sans-serif;margin-top:22px;padding:20px;background:#fffbf2;border:1px solid #e6d3a3;border-radius:10px;color:var(--text,#252630)}.ds-confirm h2{font-size:16px;font-weight:600;line-height:1.5;color:#79510f;margin:0}.ds-confirm p{margin:9px 0}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Linear 风格的数据工作台",
+    "overview": "DATA-AGENT 使用用户选定的浅灰、紧凑、细分隔线方向，作为本模块自有产品品牌。正文、表格、SQL 和执行状态构成视觉中心，紫靛色强调操作及当前选择。这里记录 `assets/app.css` 与 `assets/index.html` 已实现的局部系统，不覆盖 DB-GPT 仓库其他页面的视觉规范。\n\n底层框架仍为 DB-GPT；包名、命令、框架归属和版权保留。Linear 仅描述选定风格，不代表官方设计系统或关联产品。品牌使用 DATA-AGENT 文字及三条高度不同的线条组成的 SVG 数据标记。",
+    "keyCharacteristics": [
+      "浅灰导航、白色工作面与细分隔线。",
+      "紧凑中文工具界面，表格与 SQL 优先。",
+      "紫靛色集中表达操作、选中与焦点。",
+      "平面层级与小圆角，不依赖阴影。"
+    ],
+    "rules": [
+      {
+        "name": "The State Color Rule",
+        "body": "选中和焦点使用工作紫靛；成功、错误与风险提示沿用各自语义，并保留文字说明。",
+        "section": "colors"
+      },
+      {
+        "name": "The Data Readability Rule",
+        "body": "窄屏以横向滚动保留图表标签与数据可读性，不能用整体缩放把文字压小。",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat Workbench Rule",
+        "body": "延续平面工作区，用背景、分隔线和留白建立层级。",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** 延续浅灰侧栏、白色工作面、细分隔线与紧凑间距。",
+      "**Do** 使用 DATA-AGENT 文字品牌和本模块 SVG 数据标记。",
+      "**Do** 保留明确的焦点、状态文字、表格和图表滚动与 SQL 换行。",
+      "**Do** 将此规范限定在 safe_analysis_web，准确表达自有产品身份与 DB-GPT 框架归属。"
+    ],
+    "donts": [
+      "**Don't** 把旧 DB-GPT 中文 logo 作为本模块产品标识恢复。",
+      "**Don't** 将风险色用于普通主操作或当前导航。",
+      "**Don't** 把本模块局部规则推广成整个仓库的规范。"
+    ]
+  }
+}

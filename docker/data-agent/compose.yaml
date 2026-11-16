@@ -1,0 +1,28 @@
+services:
+  data-agent:
+    image: data-agent:local
+    build:
+      context: ../..
+      dockerfile: docker/data-agent/Dockerfile
+      target: web
+    ports:
+      - "127.0.0.1:5670:5670"
+    environment:
+      LLM_MODEL_NAME: ${LLM_MODEL_NAME:-gpt-4o-mini}
+      LLM_MODEL_API_BASE: ${LLM_MODEL_API_BASE:-https://api.openai.com/v1}
+      LLM_MODEL_API_KEY: ${LLM_MODEL_API_KEY:?Set LLM_MODEL_API_KEY in .env}
+      EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-text-embedding-3-small}
+      EMBEDDING_MODEL_API_URL: ${EMBEDDING_MODEL_API_URL:-https://api.openai.com/v1/embeddings}
+      EMBEDDING_MODEL_API_KEY: ${EMBEDDING_MODEL_API_KEY:?Set EMBEDDING_MODEL_API_KEY in .env}
+      DATA_AGENT_TOKEN: ${DATA_AGENT_TOKEN:-}
+      DATA_AGENT_ENCRYPT_KEY: ${DATA_AGENT_ENCRYPT_KEY:?Set DATA_AGENT_ENCRYPT_KEY in .env}
+    volumes:
+      - analysis-data:/app/data
+      - framework-data:/app/pilot
+      - analysis-logs:/app/logs
+    restart: unless-stopped
+
+volumes:
+  analysis-data:
+  framework-data:
+  analysis-logs:

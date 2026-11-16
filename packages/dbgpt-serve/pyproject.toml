@@ -1,0 +1,51 @@
+[project]
+name = "dbgpt-serve"
+version = "0.8.2"
+description = "Add your description here"
+authors = [
+    { name = "csunny", email = "cfqcsunny@gmail.com" }
+]
+license = "MIT"
+readme = "README.md"
+requires-python = ">= 3.10"
+
+dependencies = [
+    "dbgpt-ext",
+    "apscheduler>=3.10,<4",
+    "sqlglot>=28,<31",
+    "rank-bm25>=0.2,<0.3",
+]
+
+[project.urls]
+Homepage = "https://github.com/eosphoros-ai/DB-GPT"
+Documentation = "http://docs.dbgpt.cn/docs/overview"
+Repository = "https://github.com/eosphoros-ai/DB-GPT.git"
+Issues = "https://github.com/eosphoros-ai/DB-GPT/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+managed = true
+dev-dependencies = []
+
+[project.optional-dependencies]
+safe_analysis_mcp = ["mcp>=1.12,<2"]
+safe_analysis_files = ["duckdb>=1.2,<2", "duckdb-engine==0.9.1", "openpyxl>=3.1,<4"]
+safe_analysis_databases = ["psycopg[binary]>=3.2,<4", "pymysql>=1.1,<2"]
+safe_analysis_qdrant = ["qdrant-client>=1.17.1,<2; python_version < '3.13'"]
+
+libro = ["libro>=0.1.25"]
+dbgpts = ["poetry"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dbgpt_serve"]
+exclude = [
+    "src/dbgpt_serve/**/tests",
+    "src/dbgpt_serve/**/tests/*",
+    "src/dbgpt_serve/tests",
+    "src/dbgpt_serve/tests/*",
+    "src/dbgpt_serve/**/examples",
+    "src/dbgpt_serve/**/examples/*"
+]

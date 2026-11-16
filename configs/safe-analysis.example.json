@@ -1,0 +1,42 @@
+{
+  "model": "gemini-3.8-flash-tiered",
+  "qdrant_path": "../data/safe-analysis-qdrant",
+  "audit_file": "../data/safe-analysis-audit.sqlite3",
+  "principals": [
+    {
+      "name": "local-analyst",
+      "token_env": "DATA_AGENT_TOKEN",
+      "sources": ["sales_demo"]
+    }
+  ],
+  "sources": {
+    "sales_demo": {
+      "url_env": "DATA_AGENT_SALES_URL",
+      "dialect": "sqlite",
+      "schema": "main",
+      "tables": {
+        "sales_public": {
+          "id": "INTEGER",
+          "sale_date": "TEXT",
+          "region": "TEXT",
+          "amount": "REAL",
+          "status": "TEXT"
+        }
+      },
+      "metrics": [
+        "有效销售额 = SUM(amount)，只统计 status = 'completed' 的记录。",
+        "区域销售额按 region 分组；日期筛选使用 sale_date，采用 YYYY-MM-DD 格式。"
+      ],
+      "knowledge_files": ["../examples/safe_analysis/metrics.md"],
+      "blocked_columns": ["customer_email", "customer_phone"],
+      "masked_labels": ["email", "phone", "customer_email", "customer_phone"],
+      "max_rows": 200,
+      "timeout_ms": 5000,
+      "pool_size": 2,
+      "scan_rows": 10000,
+      "max_cost": 10000,
+      "confirm_scans": true,
+      "vector": true
+    }
+  }
+}
