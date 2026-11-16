@@ -54,7 +54,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from app.paths import BASE_DIR
-from app.selfrag import retrieve, retrieve_with_reflection
+from app.knowledge.retrieval import retrieve
+from app.knowledge.decision import retrieve_with_decision
 from app.textfix import find_artifacts, normalize_text
 
 EVAL_DIR = BASE_DIR / "eval"
@@ -127,13 +128,15 @@ def validate(testset: list[dict]) -> bool:
     ② 每个关键词在「gold_sources 覆盖的块」里真的能找到（归一化后比对）；
     ③ 语料残留污染数（应为 0，否则先跑建库修复）。
     """
-    from app.rag import get_db
+    from app.knowledge.runtime import get_store
 
     print("=" * 68)
     print("测试集校验（先跑这个，避免评估失真）")
     print("=" * 68)
-    db = get_db()
-    data = db.get()
+    db = get_store()
+    passages, _, _ = db.snapshot()
+    data = {"documents": [p.page_content for p in passages],
+            "metadatas": [p.metadata for p in passages]}
     by_source: dict[str, list[str]] = {}
     for txt, meta in zip(data["documents"], data["metadatas"]):
         by_source.setdefault(meta.get("source", ""), []).append(normalize_text(txt))
@@ -207,16 +210,16 @@ def _score_hits(row: dict, hits: list, rounds: int, fq: str) -> RetrievalRow:
 
 def eval_retrieval(testset: list[dict], reflect: bool, limit: int | None = None) -> list[RetrievalRow]:
     """跑一遍检索指标。reflect=False 为单轮基线，True 为自反思版本。"""
-    from app.rag import get_db
+    from app.knowledge.runtime import get_store
 
-    db = get_db()
+    db = get_store()
     rows = [r for r in testset if r.get("domain") != "out"]
     if limit:
         rows = rows[:limit]
     out: list[RetrievalRow] = []
     for i, row in enumerate(rows, 1):
         if reflect:
-            res = retrieve_with_reflection(db, row["question"])
+            res = retrieve_with_decision(db, row["question"])
             rr = _score_hits(row, res.hits, len(res.attempts), res.query)
         else:
             hits = retrieve(db, row["question"])

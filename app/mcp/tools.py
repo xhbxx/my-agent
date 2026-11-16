@@ -97,20 +97,22 @@ def tcm_search(query: str, k: int = 4, max_chars: int = 1200) -> dict:
     """典籍检索（纯检索，**不调大模型**，只走 embedding + rerank）。"""
     def _impl() -> dict:
         from app import credibility as CR
-        from app.rag import RAGSession
+        from app.knowledge.runtime import get_store
+        from app.knowledge.retrieval import retrieve
         from app.safety import strip_meta_info
 
         q = (query or "").strip()
         if not q:
             return {"ok": False, "tool": "tcm_search", "error": "query 不能为空"}
 
-        sess = RAGSession(conv_id=None, k_final=max(1, min(int(k or 4), 12)))
-        hits, attempts, reason = sess._retrieve(q)
+        k_final = max(1, min(int(k or 4), 12))
+        hits = retrieve(get_store(), q, k_final=k_final)
 
         rows = []
         for d, score in hits:
             text = CR.filter_chunk(strip_meta_info(d.page_content))[0]
             rows.append({
+                **d.metadata,
                 "source": d.metadata.get("source", "?"),
                 "chapter": d.metadata.get("chapter", "?"),
                 "score": round(float(score), 4),
@@ -121,8 +123,8 @@ def tcm_search(query: str, k: int = 4, max_chars: int = 1200) -> dict:
             "count": len(rows),
             "results": rows,
             "reflection": {
-                "attempts": len(attempts) if isinstance(attempts, list) else 1,
-                "reason": str(reason or ""),
+                "attempts": 0,
+                "reason": "纯检索工具，仅执行混合召回与重排，不调用生成模型审核。",
             },
             "citation_rule": "引用时请标注「来源: 书名 · 篇章」，且只能引用 text 里实际出现的文字。",
         }

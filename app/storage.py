@@ -149,6 +149,14 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE memories ADD COLUMN scope TEXT NOT NULL DEFAULT 'archived'")
         conn.execute("UPDATE memories SET scope = ? WHERE conv_id IS NOT NULL",
                      (MEM_SESSION,))          # 有来源会话的，本来就只属于那个会话
+    for name, definition in {
+        "importance": "REAL NOT NULL DEFAULT 0.5",
+        "turn_index": "INTEGER NOT NULL DEFAULT 0",
+        "entities": "TEXT NOT NULL DEFAULT '[]'",
+        "memory_state": "TEXT NOT NULL DEFAULT 'active'",
+    }.items():
+        if name not in mcols:
+            conn.execute(f"ALTER TABLE memories ADD COLUMN {name} {definition}")
     _archive_legacy_profile(conn)
 
 
@@ -178,6 +186,7 @@ def _conn() -> sqlite3.Connection:
     conn.execute("PRAGMA foreign_keys = ON")
     conn.executescript(_SCHEMA)
     _migrate(conn)
+    conn.commit()
     return conn
 
 
@@ -348,7 +357,9 @@ def archived_profile() -> dict[str, str]:
 # ---------- 记忆条目（scope 决定它能被谁看到）----------
 def add_memory(text: str, kind: str = "fact", conv_id: int | None = None,
                subject: str = "self", user_id: str = "default",
-               scope: str = MEM_SESSION) -> dict:
+               scope: str = MEM_SESSION, importance: float = 0.5,
+               turn_index: int = 0, entities: list | None = None,
+               memory_state: str = "active", conflicts: list[int] | None = None) -> dict:
     """沉淀一条记忆。去重：文本完全相同则不重复插入。
 
     subject：事实主体——'self'=用户本人 / 'third_party'=替家人问的
@@ -360,17 +371,22 @@ def add_memory(text: str, kind: str = "fact", conv_id: int | None = None,
     text = text.strip()
     now = time.time()
     with _conn() as conn:
+        conn.execute("BEGIN IMMEDIATE")
         dup = conn.execute(
-            "SELECT id FROM memories WHERE text = ? AND scope = ?",
-            (text, scope)).fetchone()
+            "SELECT id FROM memories WHERE text=? AND scope=? AND conv_id=? AND subject=? AND user_id=?",
+            (text, scope, scope_of(conv_id), subject, user_id)).fetchone()
         if dup:
             return {"id": dup["id"], "text": text, "kind": kind,
                     "conv_id": conv_id, "subject": subject, "scope": scope,
                     "user_id": user_id, "created_at": now, "duplicated": True}
         cur = conn.execute(
             "INSERT INTO memories (conv_id, kind, text, subject, user_id,"
-            " scope, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (conv_id, kind, text, subject, user_id, scope, now))
+            " scope, created_at, importance, turn_index, entities, memory_state) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (scope_of(conv_id), kind, text, subject, user_id, scope, now,
+             importance, turn_index, json.dumps(entities or [], ensure_ascii=False), memory_state))
+        if conflicts:
+            conn.executemany("UPDATE memories SET memory_state='conflict' WHERE id=? AND subject=? AND user_id=? AND (conv_id=? OR scope='global')",
+                             [(mid, subject, user_id, scope_of(conv_id)) for mid in conflicts])
         mid = cur.lastrowid
     return {"id": mid, "text": text, "kind": kind, "conv_id": conv_id,
             "subject": subject, "scope": scope, "user_id": user_id,
@@ -405,7 +421,7 @@ def list_memories(limit: int = 200, conv_id: int | None = None,
             args.append(MEM_ARCHIVED)
         else:
             cond = f"({cond})"
-    sql = ("SELECT id, conv_id, kind, text, subject, user_id, scope, created_at"
+    sql = ("SELECT id, conv_id, kind, text, subject, user_id, scope, created_at, importance, turn_index, entities, memory_state"
            " FROM memories WHERE " + cond + " ORDER BY id DESC LIMIT ?")
     args.append(limit)
     with _conn() as conn:

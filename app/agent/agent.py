@@ -540,7 +540,7 @@ class ConsultAgent:
             yield from self.ask_stream(note or "（继续作答）")
             return
 
-        r = state.record(score)
+        state.record(score)
         state.save(self.conv_id)
         yield {"type": "stage", "stage": state.stage,
                "label": S.STAGE_LABEL[state.stage],

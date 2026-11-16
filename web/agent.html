@@ -76,12 +76,9 @@
   #manage-bar button:disabled { opacity: .45; cursor: not-allowed; }
   #manage-bar .btn-batch-del { border-color: #f3c4c6; color: var(--danger); }
   #manage-bar .btn-batch-del:not(:disabled):hover { background: #fdf0f0; }
-  .side-links { padding: 8px 14px; border-top: 1px solid var(--line); }
-  .side-links a {
-    display: block; font-size: 13px; color: var(--brand); text-decoration: none;
-    padding: 6px 0;
-  }
-  .side-links a:hover { text-decoration: underline; }
+  .workspace-tools { padding:10px 24px; display:flex; flex-wrap:wrap; gap:12px 24px; border-bottom:1px solid var(--line); }
+  .workspace-tools a { font-size:13px; color:var(--green); text-underline-offset:3px; }
+  .workspace-tools a:hover { color:#07534e; }
   .side-foot {
     padding: 10px 16px; border-top: 1px solid var(--line);
     font-size: 12px; color: var(--sub); line-height: 1.5;
@@ -441,17 +438,17 @@
     <button id="btn-cancel-manage">取消</button>
     <button id="btn-batch-del" class="btn-batch-del" disabled>删除所选（0）</button>
   </div>
-  <div class="side-links">
-    <a href="/">← 切换到「养生问答」模式</a>
-    <a href="#" id="link-mem">📒 查看长期记忆与档案</a>
-    <a href="#" id="link-plan" title="食疗 / 经络穴位 / 运动起居三个专家并行出方案">🧩 生成系统调理方案（多智能体）</a>
-  </div>
   <div class="side-foot">
-    量表简化自《中医体质分类与判定》<br>结果供养生参考，非临床诊断。
+    <a href="/settings" style="display:block;color:var(--green);font-weight:600">设置</a>
   </div>
 </aside>
 
 <main id="main">
+  <nav class="workspace-tools" aria-label="问诊操作">
+    <a href="/">返回问答</a>
+    <a href="#" id="link-mem">长期记忆与档案</a>
+    <a href="#" id="link-plan">生成系统调理方案</a>
+  </nav>
   <div id="topbar">
     <span class="stage-chip" id="stage-chip">未开始</span>
     <div class="bar-wrap"><div class="bar" id="bar"></div></div>

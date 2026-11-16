@@ -225,6 +225,7 @@ def _snapshot() -> str:
 
 
 def test_read_only() -> None:
+    from app import storage
     from app.agent import constitution as C
     from app.mcp.tools import (tcm_constitution, tcm_intake_gaps,
                                tcm_safety_check)
@@ -233,7 +234,7 @@ def test_read_only() -> None:
     # 预热：先把 sqlite 连接/迁移跑完，避免把"首次连接"的写入算到工具头上
     tcm_safety_check(["当归"], "我怀孕5个月了")
 
-    db = ROOT / "store" / "chat.db"
+    db = storage.DB_PATH
     before = _snapshot()
     stat_before = (db.stat().st_size, db.stat().st_mtime_ns)
 

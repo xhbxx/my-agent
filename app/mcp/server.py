@@ -4,8 +4,7 @@
 这一层刻意做得极薄 —— 逻辑都在 `tools.py` / `resources.py`，文案都在 `schemas.py`，
 本文件只负责"把契约接到协议上"。好处是：改文案不碰逻辑，改逻辑不碰协议。
 
-【启动顺序很重要】`_boot.ensure_project_root()` 必须在导入任何业务模块之前执行
-（chroma 开库依赖相对路径，见 `_boot.py` 的说明）。
+启动时先统一项目目录与日志出口，再注册工具和资源。
 """
 from __future__ import annotations
 

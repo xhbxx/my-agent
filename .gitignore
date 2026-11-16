@@ -1,6 +1,7 @@
 # ===== 密钥与本地配置（绝不入库）=====
 .env
 .env.local
+.env-*
 *.key
 *.pem
 
@@ -34,3 +35,5 @@ docs/
 .vscode/
 .DS_Store
 Thumbs.db
+
+.uv-cache/

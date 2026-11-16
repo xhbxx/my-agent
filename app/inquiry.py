@@ -182,7 +182,6 @@ def followups(text: str, conv_id: int | None = None,
     if intent != "advice":
         return []
     from app import intake as IL
-    from app.safety import scripts as SG
     rel, sblob = IL.subject_scope(text, conv_id)
     if gaps is None:
         gaps = IL.gaps(profile, text, require=require_slots(intent),
@@ -260,7 +259,6 @@ def chief_gaps(text: str, sblob: str, prof: dict | None, rel: str,
     反馈实测"68 岁认知下降"该问时间线/卒中史/照护人，而不是通用三件套；
     "备孕三年"该问周期排卵与在服药名。
     """
-    from app.safety import scripts as SG
     from app import intake as IL
     out: list[str] = []
     for rule in SG.CHIEF_GAP_RULES:

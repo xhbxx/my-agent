@@ -335,7 +335,7 @@ def main() -> int:
         check("按配置启动并完成一次调用", False, f"{type(e).__name__}: {e}")
         print("\n  ▸ 排障顺序：")
         print("    1) JSON 解析错误 → stdout 被 print 污染（日志必须走 stderr）")
-        print("    2) 进程启动即退出 → cwd / 相对路径（chroma 开库必须相对路径）")
+        print("    2) 进程启动即退出 → 检查解释器、项目目录与依赖是否正确")
         print("    3) No module named app → 缺 PYTHONPATH")
         print("    4) 绿灯但无工具 → 先跑 python -m tools.test_mcp_tools 确认逻辑层")
 

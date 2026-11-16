@@ -27,13 +27,11 @@ LLM 只负责最后那句"整合结论"的自然语言表达——那是它真�
 """
 from __future__ import annotations
 
-import json
 import re
 
 from app import storage
 from app.safety import rules as R
 from app.safety import scan as SC
-from app.safety import scripts as SG
 from app.safety.scripts import SCREEN_SIGNALS
 
 # 排查规则表的信号正则（编译一次；表在 app/safety/scripts.py::SCREEN_RULES）
@@ -835,8 +833,8 @@ def cross_turn_brief(conv_id: int | None = None,
     if switch:
         # 方向反转时，既往原话**不得**以"这个人的事实"的形态出现——
         # 只作为"待确认材料"列出（架构层问题一：记忆是带归属的证据）。
-        lines = [f"【跨轮材料（本次会话历轮原话——⚠️ 方向反转，**归属待确认**，"
-                 f"不得作为本轮辨证依据）】"]
+        lines = ["【跨轮材料（本次会话历轮原话——⚠️ 方向反转，**归属待确认**，"
+                 "不得作为本轮辨证依据）】"]
         for e in entries[:-1]:
             lines.append(f"  [往轮·待确认] {e}")
         lines.append(f"  [本轮] {entries[-1]}")

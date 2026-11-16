@@ -1,48 +1,7 @@
-# -*- coding: utf-8 -*-
-"""分层长期记忆：把「只手 6 轮记忆」升级成三层记忆架构。
+"""会话上下文管理。近期原文和摘要在这里组装，长期条目由MemoryPolicy筛选。
 
-问题从哪来
-----------
-早期版本把"最近 6 条消息"硬编码进 prompt。用几轮就会暴露：说到第 4 轮，
-模型已经忘了第 1 轮说过的体质；聊到 20 轮，前面全部丢失。
-用户在真实使用中明确反馈了这个问题——**养生咨询恰恰是长程对话**：
-先聊体质，再聊饮食，再聊睡眠，最后还要把建议串起来，中间断了链条就废了。
-
-关键认知：**这不是模型能力问题，是上下文组装策略问题**。
-DeepSeek-chat 的上下文窗口有 64K token，装几十轮对话绰绰有余；
-"只有 6 轮"纯粹是因为我们只往里塞了 6 条。所以解法不是换模型，
-而是**重新设计"每一轮到底把什么塞进 prompt"**。
-
-三层记忆架构
-------------
-    ┌─ 第 3 层 长期记忆（跨会话，永久）─────────────────────┐
-    │  · 用户档案 profile：结构化 KV（主体质/兼夹/忌口/偏好）  │
-    │  · 记忆条目 memories：自然语言事实，向量召回相关项        │
-    ├─ 第 2 层 会话摘要（会话内，压缩留存）──────────────────┤
-    │  · 早期对话被 LLM 压成「对话纪要」，一直携带               │
-    ├─ 第 1 层 近期原文（会话内，滑动窗口）───────────────────┤
-    │  · 最近若干轮**完整原文**，保证细节不失真                  │
-    └────────────────────────────────────────────────────┘
-
-为什么保留"近期原文"而不是全部摘要化
-------------------------------------
-摘要必然丢信息（"他提到晚上 12 点睡"可能被压成"睡眠偏晚"）。
-而多轮追问恰恰极度依赖近期细节。所以策略是：
-**近期保真（原文）+ 远期保量（摘要）+ 跨会话保值（档案与条目）**。
-
-预算控制（用字符数近似 token：中文约 1.5 字/token）
----------------------------------------------------
-    RECENT_BUDGET_CHARS = 6000   ≈ 4000 token  近期原文
-    SUMMARY_BUDGET_CHARS = 2500  ≈ 1700 token  摘要纪要
-    MEMORY_TOPK = 5                              长期记忆召回条数
-总计约 7~8K token，只占 64K 窗口的 1/8，给"参考资料 + 回答"留足空间。
-超过 RECENT_BUDGET_CHARS × 1.5 就触发压缩：把最老的一段折进摘要。
-
-用法：
-    from app.memory import MemoryManager
-    m = MemoryManager()
-    ctx = m.build_context(conv_id, query="那饮食上注意什么")
-    ctx.summary_text / ctx.recent / ctx.profile_text / ctx.memories
+实体权重、轮次衰减、相似度和NLI判定见knowledge/memory_policy.py。
+持久化和旧数据迁移见storage.py。
 """
 from __future__ import annotations
 
@@ -54,19 +13,8 @@ RECENT_BUDGET_CHARS = 6000      # 近期原文预算（字符）
 SUMMARY_BUDGET_CHARS = 2500     # 摘要总预算（字符）
 COMPRESS_TRIGGER = 9000         # 未压缩消息总字数超过此值 → 触发压缩
 RECENT_KEEP_CHARS = 5000        # 压缩时至少保留这么久的近期原文
-MEMORY_TOPK = 5                 # 长期记忆召回条数（仅在条目数超过 MEMORY_ALL_IF_LESS 时生效）
-MEMORY_ALL_IF_LESS = 30         # 条目数不超过此值时全量注入，不做 top-k 截断
+MEMORY_TOPK = 5                 # 相关性和重要度筛选后，最多召回的长期记忆条数
 PROFILE_MAX_CHARS = 800         # 档案注入 prompt 的上限
-DUP_DISTANCE = 0.15             # 余弦距离 ≤ 此值视为"语义重复"（相似度 ≥ 0.85）
-
-# 归一化：去空白与常见标点，用于"同一句话不同标点/空格"的硬去重
-_PUNCT = "　 \t\n，。、；：！？.,;:!?\"'“”‘’()（）[]【】"
-
-
-def _norm(text: str) -> str:
-    return "".join(ch for ch in text if ch not in _PUNCT)
-
-
 # ---------------------------------------------------------------------------
 # 主体识别（2026-09-15 上线清单②：记忆隔离的根因加固）
 # ---------------------------------------------------------------------------
@@ -362,76 +310,18 @@ class MemoryManager:
         self.set_profile("体质转化分明细", detail, conv_id)
 
     # ---------- 第 3 层：长期记忆条目 ----------
-    # 向量索引说明（两个必须注意的工程细节）
-    # ① chroma 的 id 用**数据库主键**（mem<int>），不能用列表下标：
-    #    列表按下标当 id 时，一旦删掉某条记忆后面的下标全部前移，
-    #    向量与文本就会错位——检索出来的"记忆"张冠李戴。这是实测发现的设计缺陷。
-    # ② 写入沿用"先算向量、再零网络写入"的铁律（chromadb 1.5.9 见 app/index.py）。
-
-    @staticmethod
-    def _memory_collection():
-        import chromadb
-        from app.paths import chroma_store_path
-        client = chromadb.PersistentClient(path=chroma_store_path())
-        return client.get_or_create_collection(
-            name="user_memory", metadata={"hnsw:space": "cosine"})
-
-    def _sync_index(self, memories: list[dict]):
-        """把尚未入索引的记忆补进向量集合，返回集合对象。"""
-        from app.embed import get_embeddings
-        col = self._memory_collection()
-        have = set(col.get(include=[]).get("ids", []))
-        todo = [m for m in memories if f"mem{m['id']}" not in have]
-        if todo:
-            vecs = get_embeddings().embed_documents([m["text"] for m in todo])
-            col.upsert(ids=[f"mem{m['id']}" for m in todo],
-                       documents=[m["text"] for m in todo], embeddings=vecs)
-        return col
-
     def recall(self, query: str, conv_id: int | None = None,
-               include_global: bool | None = None,
-               topk: int = MEMORY_TOPK) -> list[str]:
-        """召回**本会话**的记忆条目；跨会话条目只在用户主动问起时才带上。
-
-        2026-09-16「记忆按会话隔离」后的两道闸门：
-        ① **作用域闸门**（本函数）：默认只取 `scope='session' AND conv_id=本会话`。
-           跨会话的 global 条目只有两种情况下才进提示词——
-           `include_global=True`（用户这轮说了"我上次说的…"，由调用方判定）
-           或显式传入；否则**新开的对话一条旧记忆都拿不到**。
-        ② **方向一致性门控**（`_consistent_memories`，沿用 2026-09-15 的修复）：
-           与当前主诉病机方向相反的旧条目不注入（当前畏寒 vs 旧记忆潮热盗汗）。
-
-        为什么小集合不做 top-k 截断（2026-09-14 由评估发现）：
-        长期记忆天然是小集合，按 embedding 相似度截断成 5 条**只会引入抖动**
-        （同一句问法有时能回忆起"长期熬夜"，有时不能）。条目数 ≤ 30 时全量注入。
-        """
+               include_global: bool | None = None, topk: int = MEMORY_TOPK) -> list[str]:
+        from app.embed import get_embeddings
+        from app.knowledge.memory_policy import MemoryPolicy
         if include_global is None:
             include_global = wants_recall(query)
-        if include_global:
-            allm = storage.list_memories(limit=500, conv_id=conv_id)
-        else:
-            allm = storage.list_memories(limit=500, conv_id=conv_id,
-                                         scope=storage.MEM_SESSION)
-        if not allm:
-            return []
-        picked = self._consistent_memories(allm, query)
-        if len(picked) <= max(topk, MEMORY_ALL_IF_LESS):
-            return [self._label(m) for m in picked]
-        try:
-            from app.embed import get_embeddings
-            col = self._sync_index(allm)
-            qv = get_embeddings().embed_query(query)
-            res = col.query(query_embeddings=[qv], n_results=topk)
-            by_id = {m["id"]: self._label(m) for m in picked}
-            out: list[str] = []
-            for cid_ in (res.get("ids") or [[]])[0]:
-                mid = int(str(cid_).replace("mem", ""))
-                if mid in by_id:                 # 只认本次作用域内的条目
-                    out.append(by_id[mid])
-            return out or [self._label(m) for m in picked[:topk]]
-        except Exception:
-            # 退路：向量检索不可用时不阻塞对话，按时间取最近的若干条
-            return [self._label(m) for m in picked[:topk]]
+        scope = None if include_global else storage.MEM_SESSION
+        candidates = storage.list_memories(limit=500, conv_id=conv_id, scope=scope)
+        candidates = self._consistent_memories(candidates, query)
+        current_round = sum(m['role'] == 'user' for m in storage.get_messages(conv_id)) if conv_id else 0
+        selected = MemoryPolicy(get_embeddings()).select(query, candidates, current_round, topk)
+        return [self._label(memory) for memory in selected]
 
     # 病机方向互斥对：两个方向同时出现，说明记录之间很可能不是同一状态
     _OPPOSITE = (("cold", "yin_deficiency"), ("cold", "damp_heat"))
@@ -493,86 +383,28 @@ class MemoryManager:
             out.append(fact)
         return out
 
-    def remember_turn(self, conv_id: int, question: str,
-                      answer: str) -> list[str]:
-        """从一轮对话里抽取"以后还会用到"的事实并落库；返回新增条目。
+    def remember_fact(self, conv_id: int | None, fact: str, question: str = "") -> dict:
+        from app.embed import get_embeddings
+        from app.knowledge.memory_policy import MemoryPolicy
+        scope = storage.MEM_GLOBAL if wants_longterm(question) else storage.MEM_SESSION
+        subject = _subject_of(fact)
+        existing = [m for m in storage.list_memories(limit=500, conv_id=conv_id, scope=scope)
+                    if m['subject'] == subject and m.get('memory_state', 'active') == 'active']
+        admission = MemoryPolicy(get_embeddings()).admit(fact, existing, context=question)
+        if admission.state in {'ignored', 'duplicate'}:
+            return {'text': fact, 'duplicated': True, 'memory_state': admission.state}
+        current_round = sum(m['role'] == 'user' for m in storage.get_messages(conv_id)) if conv_id else 0
+        result = storage.add_memory(
+            fact, conv_id=conv_id, subject=subject, scope=scope,
+            importance=admission.importance, entities=admission.entities,
+            turn_index=current_round, memory_state=admission.state, conflicts=admission.conflicts)
+        result['memory_state'] = admission.state
+        return result
 
-        **作用域判定**（2026-09-16）：默认写 `scope='session'`（只属于本会话，
-        新开对话看不到）；只有用户在问题里**明说**"记住／记一下／以后都"，
-        才升格成 `scope='global'`（唯一允许跨会话的条目）。
-        这条判据写在代码里而不是提示词里——"能不能跨会话"是产品语义，
-        不能让模型自由发挥（否则又回到"记忆很乱"）。
-
-        为什么要做语义去重：模型可能同时通过 remember_fact 工具显式记忆、
-        又由这里的自动抽取再记一遍，同一件事会以不同措辞存两条
-        （实测：『在杭州上班』与『用户在杭州工作，常年坐办公室』并存）。
-        除"原文相同"的硬去重外，还用**向量余弦相似度**做语义去重；
-        去重范围限定在本次作用域内（别的会话记过同一件事，不影响本会话再记）。
-        """
-        cands = self._extract(question, answer)
-        if not cands:
-            return []
-        scope = (storage.MEM_GLOBAL if wants_longterm(question)
-                 else storage.MEM_SESSION)
-
-        allm = storage.list_memories(limit=500, conv_id=conv_id, scope=scope)
-        known = {_norm(m["text"]) for m in allm}
-        cands = [c for c in cands if _norm(c) not in known]
-        if not cands:
-            return []
-
-        added: list[str] = []
-        try:
-            from app.embed import get_embeddings
-            col = self._sync_index(allm)
-            vecs = get_embeddings().embed_documents(cands)
-            for fact, vec in zip(cands, vecs):
-                subj = _subject_of(fact)          # 落库前判主体（家人 ≠ 本人）
-                # 语义去重：只跟**本次作用域**里已有的条目比（跨会话的存量不参与，
-                # 否则新会话记同一件事会被别的会话的旧条目拦掉）
-                if self._max_sim(col, vec, [m["id"] for m in allm]) >= (
-                        1.0 - DUP_DISTANCE):
-                    continue
-                r = storage.add_memory(fact, kind="fact", conv_id=conv_id,
-                                       subject=subj, scope=scope)
-                if not r.get("duplicated"):
-                    added.append(fact)
-                    allm.append({"id": r["id"], "text": fact})  # 后续候选也去重
-                    col.upsert(ids=[f"mem{r['id']}"], documents=[fact],
-                               embeddings=[vec])
-        except Exception:
-            # 向量链路不可用 → 退回"仅原文去重"，保证记忆功能不整体失效
-            for fact in cands:
-                r = storage.add_memory(fact, kind="fact", conv_id=conv_id,
-                                       subject=_subject_of(fact), scope=scope)
-                if not r.get("duplicated"):
-                    added.append(fact)
+    def remember_turn(self, conv_id: int, question: str, answer: str) -> list[str]:
+        added = []
+        for fact in self._extract(question, answer):
+            result = self.remember_fact(conv_id, fact, question)
+            if not result.get('duplicated') and result['memory_state'] == 'active':
+                added.append(fact)
         return added
-
-    @staticmethod
-    def _max_sim(col, vec, ids: list[int]) -> float:
-        """候选向量与给定记忆条目的最大余弦相似度（纯本地计算，零网络）。
-
-        为什么不用 col.query + where：chroma 的 where 只能过滤 metadata，
-        过滤不了 id；而"只在本次作用域内去重"恰恰是 id 维度的过滤。
-        条目数很小（几十条），取回向量本地算余弦更准也更省事。
-        """
-        ids = [i for i in ids if i]
-        if not ids:
-            return 0.0
-        try:
-            got = col.get(ids=[f"mem{i}" for i in ids], include=["embeddings"])
-            embs = got.get("embeddings")
-            if embs is None:
-                return 0.0
-            nv = sum(float(x) * float(x) for x in vec) ** 0.5 or 1.0
-            best = 0.0
-            for e in embs:
-                if e is None:
-                    continue
-                ne = sum(float(x) * float(x) for x in e) ** 0.5 or 1.0
-                s = sum(float(a) * float(b) for a, b in zip(vec, e)) / (nv * ne)
-                best = max(best, s)
-            return best
-        except Exception:
-            return 0.0

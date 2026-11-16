@@ -1,0 +1,2 @@
+{"id":"memory-relevant","query":"我之前提到的高血压病史是什么？","current_round":3,"memories":[{"id":1,"text":"用户说自己有高血压病史。","importance":0.65,"turn_index":2,"memory_state":"active"},{"id":2,"text":"用户喜欢绘画。","importance":0.35,"turn_index":2,"memory_state":"active"}],"expected_ids":[1]}
+{"id":"memory-conflict","query":"我是否有高血压病史？","current_round":3,"memories":[{"id":1,"text":"用户说自己有高血压病史。","importance":0.65,"turn_index":2,"memory_state":"conflict"},{"id":2,"text":"用户说自己从未有高血压病史。","importance":0.65,"turn_index":3,"memory_state":"conflict"}],"expected_ids":[]}

@@ -405,10 +405,7 @@
     <button id="btn-batch-del" class="btn-batch-del" disabled>删除所选（0）</button>
   </div>
   <div class="side-foot">
-    <a href="/agent" style="display:block;color:var(--green);text-decoration:none;margin-bottom:8px;font-weight:600">🧭 体质辨识问诊 · 27 题测体质 →</a>
-    <div id="mem-line" style="margin-bottom:8px;color:#8a93a3">记忆 —</div>
-    基于本地知识库（《黄帝内经》素问/灵枢 + 神农本草经 + 千金方等 10 部典籍）<br>
-    回答仅供参考，不构成医疗建议。
+    <a href="/settings" style="display:block;color:var(--green);font-weight:600">设置</a>
   </div>
 </aside>
 
@@ -460,7 +457,6 @@ let selected = new Set();    // 勾选的会话 id
 const $ = s => document.querySelector(s);
 const chatInner = $('#chat-inner'), chatScroll = $('#chat-scroll');
 const input = $('#input'), btnSend = $('#btn-send');
-const memLine = $('#mem-line');        // 侧栏底部的三层记忆状态
 
 /* ================================================================
    工具
@@ -1081,13 +1077,7 @@ async function send() {
         const frame = buf.slice(0, idx); buf = buf.slice(idx + 2);
         if (!frame.startsWith('data: ')) continue;
         const ev = JSON.parse(frame.slice(6));
-        if (ev.type === 'memory') {
-          if (memLine) {
-            const s = ev.stats || {};
-            memLine.textContent = `记忆 历史${s.total_messages ?? 0}·注入${s.recent_kept ?? 0}` +
-              `·纪要${s.summary_chars ?? 0}字·档案${s.profile_keys ?? 0}·召回${s.memories_recalled ?? 0}`;
-          }
-        } else if (ev.type === 'standalone') {
+        if (ev.type === 'standalone') {
           statusText.textContent = '正在检索资料…';
         } else if (ev.type === 'reflection') {
           for (const a of ev.attempts || []) {

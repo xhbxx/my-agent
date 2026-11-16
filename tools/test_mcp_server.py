@@ -309,7 +309,7 @@ async def _run() -> int:
         #   而宿主拉起子进程时的 cwd 是未知的（实测 WorkBuddy 的 mcpServers
         #   没有 cwd 字段）。所以配置里必须带 PYTHONPATH=<项目根>，
         #   让 import 与 chdir 两件事各有着落：
-        #       PYTHONPATH → 找得到 app 包；_boot 自 chdir → chroma 相对路径能开库。
+        #       PYTHONPATH找到app包；_boot统一项目目录。
         print("\n【模拟不认 cwd 的宿主（WorkBuddy 实测如此）】")
         import tempfile
 

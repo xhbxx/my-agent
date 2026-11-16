@@ -1,7 +1,7 @@
 # 语料目录说明
 
-本目录放检索用知识库语料。**出于版权与体积考虑，仓库只收录 6 篇自建知识卡片**（本目录下的 `.md` 文件，均为原创整理），
-其余古籍与国标 PDF **不入库**，需要按下方清单自行准备后放入本目录，再执行建库。
+本目录放检索用知识库语料。**出于版权与体积考虑，上游仓库只收录 6 篇自建知识卡片**（本目录下的 `.md` 文件，均为原创整理），
+其余古籍与国标 PDF **不随上游仓库分发**，需要按下方清单自行准备后放入本目录，再执行建库。
 
 ## 已收录（可直接跑通 demo）
 
@@ -21,22 +21,21 @@
   —— 请自行从官方渠道获取，遵守其使用条款，**不要提交到公开仓库**
 - **近现代医家著作与现代科普读物**：请自行购买或借阅获取，注意版权
 
+## 本地新增资料
+
+`000-神农本草经.txt`来自[TCM-Ancient-Books](https://github.com/xiaopangxia/TCM-Ancient-Books/blob/master/000-%E7%A5%9E%E5%86%9C%E6%9C%AC%E8%8D%89%E7%BB%8F.txt)，UTF-8编码，261534字节。原文件Git blob为`4141a7280495c802a40e2f5426b0cb921fe72d5e`，已验证可解析为526个片段。
+
 ## 建库流程
 
-```bash
-# 1. 把语料放入本目录（.pdf / .md / .txt 均可）
-# 2. 中文 PDF 先做归一化（修复部首码位污染，否则"词明明在库里却搜不到"）
-python -m app.textfix
+```powershell
+# 查看解析和分块结果，不调用模型
+.venv\Scripts\python.exe -m app.index --report-only --no-ocr
 
-# 3. 空跑查看切块结果，零 API 消耗
-python -m app.index --report-only --no-ocr
+# 填好.env后，解析、向量化并发布新快照
+.venv\Scripts\python.exe -m app.index
 
-# 4. 确认无误后增量入库（仅重算变更文件）
-python -m app.index
-
-# 5. 校验：残留污染应为 0
-python -m app.eval --validate
+# 对失败或中断的任务进行补偿
+.venv\Scripts\python.exe -m app.index --retry-only
 ```
 
-> ⚠️ 改动切块或归一化逻辑后，务必把 `app/index.py` 的 `EXTRACTOR_VERSION` 加 1，
-> 否则新旧文本块会混在同一个库里、静默沿用旧向量。
+归一化已在解析链路中统一执行，无需另外生成一份清洗副本。分块规则签名在`app/knowledge/documents.py`维护。版本更新与快照发布规则见项目根目录`START_HERE.md`。

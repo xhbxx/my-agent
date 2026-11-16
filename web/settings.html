@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>设置 · 中医文献问答</title>
+<style>
+  :root { --ink:#26303c; --sub:#536171; --green:#0f766e; --line:#dce3e9; --bg:#f7f9fc; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.7 "Microsoft YaHei","Segoe UI",sans-serif; }
+  a { color:var(--green); text-underline-offset:4px; }
+  a:hover { color:#07534e; }
+  header { background:#fff; border-bottom:1px solid var(--line); }
+  nav { max-width:760px; padding:18px 28px; margin:auto; display:flex; justify-content:space-between; gap:20px; }
+  main { max-width:760px; margin:32px auto 64px; padding:0 28px; }
+  h1 { margin:0 0 6px; font-size:26px; font-weight:650; }
+  h2 { margin:0 0 8px; font-size:19px; }
+  p { margin:0 0 18px; color:var(--sub); }
+  section { background:#fff; border:1px solid var(--line); border-radius:12px; padding:26px; margin-top:24px; }
+  .field { margin:16px 0; }
+  fieldset { border:0; border-bottom:1px solid var(--line); padding:18px 0 22px; margin:0 0 20px; min-width:0; }
+  legend { font-size:18px; font-weight:600; padding:0; }
+  label { display:block; font-weight:600; margin-bottom:6px; }
+  .field-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .key-state { color:var(--sub); font-size:13px; }
+  .key-state.saved { color:var(--green); }
+  input[type=password],input[type=text],input[type=url] { width:100%; min-height:46px; border:1px solid #a8b5c1; border-radius:7px; padding:10px 12px; font:inherit; color:var(--ink); background:#fff; caret-color:var(--green); }
+  input::placeholder { color:#596674; opacity:1; }
+  button { min-height:44px; padding:9px 20px; border:1px solid var(--green); background:var(--green); color:#fff; border-radius:7px; font:inherit; font-weight:600; cursor:pointer; }
+  button:hover:not(:disabled) { background:#095e58; }
+  button:disabled { background:#e8edf0; color:#536171; border-color:#ccd5dc; cursor:not-allowed; }
+  :focus-visible { outline:3px solid #4d6bfe; outline-offset:3px; }
+  .hint { font-size:13px; margin:6px 0 0; }
+  .check { display:flex; align-items:center; gap:8px; font-weight:400; margin-bottom:22px; }
+  .check input { accent-color:var(--green); width:17px; height:17px; }
+  .feedback { min-height:27px; margin:14px 0 0; color:var(--green); overflow-wrap:anywhere; }
+  .feedback.error { color:#a8272f; }
+  .build-info { margin:18px 0; }
+  progress { width:100%; height:12px; accent-color:var(--green); }
+  #progress-label { font-size:13px; font-variant-numeric:tabular-nums; }
+  #build-message { margin-top:7px; overflow-wrap:anywhere; }
+  footer { margin-top:26px; }
+  ::selection { background:#cce9e4; color:#173c36; }
+  @media(max-width:540px) { nav { padding:16px 20px; } main { padding:0 16px; margin-top:24px; } section { padding:20px; } .field-head { align-items:flex-start; } button { width:100%; } }
+</style>
+</head>
+<body>
+<header><nav aria-label="主导航"><strong>中医文献问答</strong><a href="/">返回问答</a></nav></header>
+<main>
+  <h1>设置</h1>
+  <p>分别设置三个模型的API地址、模型名称和Key，再建立知识库。</p>
+  <section aria-labelledby="api-title">
+    <h2 id="api-title">模型服务</h2>
+    <p>密钥保存在这台电脑的项目配置中，保存后即可生效。</p>
+    <form id="api-form">
+      <fieldset>
+        <legend>大模型</legend>
+        <p class="hint">OpenAI兼容的对话接口，用于回答生成、证据判断和工具调用。</p>
+        <div class="field"><label for="llm-url">API 基础地址（通常以 /v1 结尾）</label><input id="llm-url" name="llm_base_url" type="url" maxlength="1000" required autocomplete="off"></div>
+        <div class="field"><label for="llm-model">模型名称</label><input id="llm-model" name="llm_model" type="text" maxlength="1000" required spellcheck="false" autocomplete="off"></div>
+        <div class="field"><div class="field-head"><label for="llm-key">API Key</label><span id="llm-state" class="key-state">正在读取</span></div><input id="llm-key" name="llm_api_key" type="password" maxlength="1000" autocomplete="new-password" spellcheck="false" placeholder="填写该服务的API Key，留空保留已保存的Key"></div>
+      </fieldset>
+      <fieldset>
+        <legend>向量模型</legend>
+        <p class="hint">OpenAI兼容的embeddings接口。更换地址或模型后需要重新建立知识库。</p>
+        <div class="field"><label for="embedding-url">API 基础地址（通常以 /v1 结尾）</label><input id="embedding-url" name="embedding_base_url" type="url" maxlength="1000" required autocomplete="off"></div>
+        <div class="field"><label for="embedding-model">模型名称</label><input id="embedding-model" name="embedding_model" type="text" maxlength="1000" required spellcheck="false" autocomplete="off"></div>
+        <div class="field"><div class="field-head"><label for="embedding-key">API Key</label><span id="embedding-state" class="key-state">正在读取</span></div><input id="embedding-key" name="embedding_api_key" type="password" maxlength="1000" autocomplete="new-password" spellcheck="false" placeholder="填写该服务的API Key，留空保留已保存的Key"></div>
+      </fieldset>
+      <fieldset>
+        <legend>重排模型</legend>
+        <p class="hint">兼容Cohere的重排接口，返回results、index和relevance_score。</p>
+        <div class="field"><label for="rerank-url">API 地址（完整 /rerank 地址）</label><input id="rerank-url" name="rerank_base_url" type="url" maxlength="1000" required autocomplete="off"></div>
+        <div class="field"><label for="rerank-model">模型名称</label><input id="rerank-model" name="rerank_model" type="text" maxlength="1000" required spellcheck="false" autocomplete="off"></div>
+        <div class="field"><div class="field-head"><label for="rerank-key">API Key</label><span id="rerank-state" class="key-state">正在读取</span></div><input id="rerank-key" name="rerank_api_key" type="password" maxlength="1000" autocomplete="new-password" spellcheck="false" placeholder="填写该服务的API Key，留空保留已保存的Key"></div>
+      </fieldset>
+      <label class="check"><input type="checkbox" id="show-keys">显示本次输入的密钥</label>
+      <button id="save" type="submit">保存设置</button>
+      <p id="save-message" class="feedback" role="status" aria-live="polite"></p>
+    </form>
+  </section>
+  <section aria-labelledby="knowledge-title">
+    <h2 id="knowledge-title">知识库</h2>
+    <p>读取项目 data 文件夹中的资料，包括已下载的《神农本草经》。新增资料后，可在这里更新。</p>
+    <strong id="index-state">正在读取知识库状态</strong>
+    <div class="build-info" aria-live="polite">
+      <progress id="build-progress" value="0" max="1" aria-label="知识库建立进度"></progress>
+      <div id="progress-label">尚未开始</div>
+      <p id="build-message" class="hint">保存向量模型配置后即可建立知识库。</p>
+    </div>
+    <button id="build" type="button" disabled>建立 / 更新知识库</button>
+    <p class="hint">建立过程会调用向量服务，请保持应用运行。重复更新会复用未变更的文档。</p>
+    <p id="build-error" class="feedback error" role="status" aria-live="polite"></p>
+  </section>
+  <footer><a href="/">返回问答，开始使用</a></footer>
+</main>
+<script>
+const byId = id => document.getElementById(id);
+let settings = null;
+let polling = null;
+
+async function request(path, options = {}) {
+  const response = await fetch(path, {cache:'no-store', ...options});
+  const data = await response.json();
+  if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : '操作未完成，请重试。');
+  return data;
+}
+
+const services = ['llm','embedding','rerank'];
+let originalFields = {};
+function updateButtons() {
+  const dirty = services.some(name => byId(name+'-key').value.trim() ||
+    ['url','model'].some(field => byId(name+'-'+field).value !== originalFields[name+'-'+field]));
+  byId('build').disabled = !settings?.models.embedding.api_key_configured || settings?.build.running || dirty;
+  byId('save').disabled = !settings || settings.build.running;
+}
+
+function renderStatus(data, fillFields = false) {
+  settings = data;
+  for (const name of services) {
+    const model = data.models[name];
+    const saved = model.api_key_configured;
+    byId(name+'-state').textContent = saved ? 'Key已保存' : '尚未填写Key';
+    byId(name+'-state').classList.toggle('saved', saved);
+    if (fillFields) {
+      byId(name+'-url').value = model.base_url;
+      byId(name+'-model').value = model.model;
+      originalFields[name+'-url'] = model.base_url;
+      originalFields[name+'-model'] = model.model;
+    }
+  }
+  const job = data.build;
+  byId('index-state').textContent = data.index_ready ? '当前向量模型的知识库已就绪' : '知识库未建立或向量配置已更换，请重新建立';
+  byId('build-progress').max = Math.max(job.total, 1);
+  byId('build-progress').value = job.processed;
+  byId('progress-label').textContent = job.total ? `${job.processed} / ${job.total} 份资料` : '尚未开始';
+  byId('build-message').textContent = job.message;
+  byId('build-message').style.color = job.status === 'failed' ? '#a8272f' : '';
+  byId('build').textContent = job.running ? '正在建立知识库…' : '建立 / 更新知识库';
+  updateButtons();
+  clearTimeout(polling);
+  if (job.running) polling = setTimeout(loadStatus, 1500);
+}
+
+async function loadStatus() {
+  try { renderStatus(await request('/api/settings'), !settings); }
+  catch (error) {
+    byId('build-error').textContent = '无法读取应用状态，请确认启动程序仍在运行，或刷新重试。';
+    if (settings?.build.running) polling = setTimeout(loadStatus, 3000);
+  }
+}
+
+byId('api-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  const button = byId('save');
+  const message = byId('save-message');
+  button.disabled = true;
+  button.textContent = '正在保存…';
+  message.textContent = '';
+  message.classList.remove('error');
+  try {
+    const payload = {};
+    for (const name of services) {
+      payload[name+'_base_url'] = byId(name+'-url').value;
+      payload[name+'_model'] = byId(name+'-model').value;
+      payload[name+'_api_key'] = byId(name+'-key').value;
+    }
+    const data = await request('/api/settings', {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    for (const name of services) { byId(name+'-key').value = ''; byId(name+'-key').type = 'password'; }
+    byId('show-keys').checked = false;
+    renderStatus(data, true);
+    message.textContent = '三组配置已保存并生效。更换向量模型或API地址后，请重新建立知识库。';
+  } catch (error) { message.textContent = error.message; message.classList.add('error'); }
+  finally { button.textContent = '保存设置'; updateButtons(); }
+});
+
+byId('build').addEventListener('click', async () => {
+  byId('build').disabled = true;
+  byId('build-error').textContent = '';
+  try {
+    const job = await request('/api/knowledge/build', {method:'POST'});
+    renderStatus({...settings, build:job});
+    await loadStatus();
+  } catch (error) { byId('build-error').textContent = error.message; updateButtons(); }
+});
+
+byId('show-keys').addEventListener('change', event => {
+  const type = event.target.checked ? 'text' : 'password';
+  for (const name of services) byId(name+'-key').type = type;
+});
+for (const name of services) for (const field of ['url','model','key']) byId(name+'-'+field).addEventListener('input', updateButtons);
+window.addEventListener('pagehide', () => clearTimeout(polling));
+loadStatus();
+</script>
+</body>
+</html>

@@ -88,15 +88,15 @@ def _llm_text(prompt: str, system: str = "") -> str:
 def _search(query: str, k_final: int = 4, max_rounds: int = 2) -> dict:
     """走现有的自反思两段式检索，返回给节点用的结构化结果。
 
-    **刻意复用 `app/selfrag`** 而不是另写一条检索链路：多 Agent 的价值在于
+    复用 `knowledge/decision.py` 的检索决策，多 Agent 的价值在于
     角色分工，不在于再造一个检索器；链路一旦分叉，两边行为就会漂移
     （这个坑本项目在"两段式检索抽成模块级函数"时已经踩过一次）。
     """
-    from app.rag import get_db
-    from app.selfrag import retrieve_with_reflection
+    from app.knowledge.runtime import get_store
+    from app.knowledge.decision import retrieve_with_decision
 
     try:
-        res = retrieve_with_reflection(get_db(), query,
+        res = retrieve_with_decision(get_store(), query,
                                        k_final=k_final, max_rounds=max_rounds)
     except Exception as e:
         # 检索失败（限流 / 连接 / 索引异常）不应炸掉整个专家节点。
@@ -654,7 +654,6 @@ def movement_expert_node(state: TCMState) -> dict:
 # 只有被安全审查打回重写时，才调模型来"带着修改意见重新落笔"——
 # 那时要做的是**改写判断**，不是搬运，这正是模型该干的活。
 def _merge_experts(state: TCMState) -> dict:
-    consult = state["consult"]
     diagnosis = state.get("diagnosis") or {}
     de = state.get("diet_expert") or {}
     me = state.get("meridian_expert") or {}

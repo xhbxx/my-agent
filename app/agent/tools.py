@@ -26,6 +26,7 @@ LLM 擅长的是"把用户说的『我冬天手脚冰凉』理解成第 3 题回
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 
 from app.agent import constitution as C
 from app.agent import state as S
@@ -274,37 +275,24 @@ class ToolBox:
         query = (args.get("query") or "").strip()
         if not query:
             return {"ok": False, "reason": "query 不能为空"}
-        from app.paths import STORE_DIR
-        from app.rag import get_db
-        from app.safety import strip_meta_info
-        from app.selfrag import retrieve_with_reflection
+        from app.knowledge.runtime import get_store
+        from app.knowledge.decision import retrieve_with_decision
 
-        res = retrieve_with_reflection(get_db(), query)
+        res = retrieve_with_decision(get_store(), query)
         for d, score in res.hits:
-            self.sources.append({
-                "source": d.metadata.get("source", "?"),
-                "chapter": d.metadata.get("chapter", "?"),
-                "score": round(score, 3),
-            })
+            self.sources.append({**d.metadata, "score": round(score, 3)})
         # 推给前端：自反思过程 + 本次命中来源（让"检索在想什么"可见）
         self.events.append({
             "type": "reflection", "reason": res.reason,
-            "attempts": [{"round": a.round, "query": a.query,
-                          "top_score": a.top_score, "accepted": a.accepted}
-                         for a in res.attempts]})
+            "attempts": [asdict(a) for a in res.attempts]})
         self.events.append({"type": "sources", "sources": list(self.sources)})
         return {
             "ok": True,
             "final_query": res.query,
             "low_confidence": res.low_confidence,
             "reflection": res.reason,
-            "rounds": [{"round": a.round, "query": a.query,
-                        "top_score": a.top_score, "accepted": a.accepted}
-                       for a in res.attempts],
-            "hits": [{"source": d.metadata.get("source", "?"),
-                      "chapter": d.metadata.get("chapter", "?"),
-                      "score": round(sc, 3),
-                      "text": strip_meta_info(d.page_content)[:400]}
+            "rounds": [asdict(a) for a in res.attempts],
+            "hits": [{**d.metadata, "score": round(sc, 3), "text": d.page_content}
                      for d, sc in res.hits],
             "notice": ("检索置信度低，资料库可能没有直接相关内容。"
                        "请如实告知用户，如需补充常识性建议必须注明"
@@ -318,16 +306,15 @@ class ToolBox:
         if not fact:
             return {"ok": False, "reason": "fact 不能为空"}
         from app import storage
-        from app.memory import _subject_of, wants_longterm
+        from app.memory import wants_longterm
         # 作用域闸门（2026-09-16）：模型主动记忆**不等于**用户要求长期记住。
         # 只有用户这轮明说「记住／记一下／以后都」才升格为跨会话（global），
         # 否则只记在本会话——"新开的对话没有记忆"是产品语义，不能交给模型裁量。
         scope = (storage.MEM_GLOBAL if wants_longterm(self._last_user_text())
                  else storage.MEM_SESSION)
-        r = storage.add_memory(fact, kind=args.get("kind", "fact"),
-                               conv_id=self.conv_id,
-                               subject=_subject_of(fact), scope=scope)
-        return {"ok": True, "saved": fact, "scope": scope,
+        r = self.memory.remember_fact(self.conv_id, fact, self._last_user_text())
+        return {"ok": r.get("memory_state") == "active", "saved": fact,
+                "memory_state": r.get("memory_state"), "scope": scope,
                 "duplicated": r.get("duplicated", False),
                 "note": ("已记为本会话内的信息（新开对话不会自动带上）；"
                          "若用户希望长期记住，请他明说一句「记住…」")

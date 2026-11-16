@@ -30,38 +30,43 @@ def _json(obj: Any) -> str:
 # tcm://kb/manifest —— 语料清单
 # ---------------------------------------------------------------------------
 def kb_manifest() -> str:
-    """收录了哪些书 / 多少块 / 什么时候建的 / 用什么管线建的（只读文件，不碰网络）。"""
+    """从当前发布快照读取语料清单，不初始化模型或读取旧Chroma清单。"""
+    import sqlite3
+    from contextlib import closing
+    from app.paths import STORE_DIR
+
     try:
-        m = json.loads(_manifest_path().read_text(encoding="utf-8"))
-    except Exception as e:  # noqa: BLE001
-        _boot.log(f"[mcp:kb_manifest] 读清单失败: {type(e).__name__}: {e}")
-        return _json({"ok": False, "error": f"读语料清单失败: {e}"})
-
-    files = m.get("files") or {}
-    rows = []
-    for name, meta in sorted(files.items()):
-        meta = meta or {}
-        rows.append({"name": name,
-                     "chunks": meta.get("chunks"),
-                     "chars": meta.get("chars")})
-
-    up = m.get("updated_at")
-    return _json({
-        "ok": True,
-        "collection": "tcm_health",
-        "built_at": up,
-        "pipeline": m.get("pipeline"),
-        "file_count": len(rows),
-        "total_chunks": sum(int(r.get("chunks") or 0) for r in rows),
-        "total_chars": sum(int(r.get("chars") or 0) for r in rows),
-        "corpus": rows,
-        "note": "检索用 tcm_search；这里只是清单，不返回正文。",
-    })
-
-
-def _manifest_path():
-    from pathlib import Path
-    return Path(_boot.PROJECT_ROOT) / "store" / "ingest_manifest.json"
+        catalog = STORE_DIR / "catalog.db"
+        with closing(sqlite3.connect(catalog.as_uri() + "?mode=ro", uri=True)) as db:
+            row = db.execute("SELECT version FROM active WHERE id=1").fetchone()
+        if row is None:
+            raise ValueError("尚未发布知识库快照")
+        snapshot = row[0]
+        manifest_path = STORE_DIR / "snapshots" / snapshot / "passages.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        files = {}
+        for passage in manifest["passages"]:
+            source = passage["metadata"]["source"]
+            entry = files.setdefault(source, {"name": source, "chunks": 0, "chars": 0})
+            entry["chunks"] += 1
+            entry["chars"] += len(passage["page_content"])
+        corpus = [files[source] for source in sorted(files)]
+        return _json({
+            "ok": True,
+            "collection": "tcm_health",
+            "snapshot": snapshot,
+            "built_at": manifest_path.stat().st_mtime,
+            "pipeline": "faiss-hnsw",
+            "embedding_model": manifest["embedding_id"],
+            "file_count": len(corpus),
+            "total_chunks": sum(entry["chunks"] for entry in corpus),
+            "total_chars": sum(entry["chars"] for entry in corpus),
+            "corpus": corpus,
+            "note": "检索用tcm_search；这里只返回已发布语料的统计。",
+        })
+    except (OSError, sqlite3.Error, ValueError, KeyError) as error:
+        _boot.log(f"[mcp:kb_manifest] 读清单失败: {error}")
+        return _json({"ok": False, "error": str(error)})
 
 
 # ---------------------------------------------------------------------------

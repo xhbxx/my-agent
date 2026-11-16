@@ -52,13 +52,15 @@ from app.agent.state import ConsultState, STAGE_LABEL
 from app.memory import MemoryManager
 from app.paths import BASE_DIR
 from app.rag import RAGSession
+from app.web_settings import router as settings_router
 
 app = FastAPI(title="中医养生科普助手")
+app.include_router(settings_router)
 
 WEB_DIR = BASE_DIR / "web"
 
 # 并发护栏：同一时刻只放行一个聊天请求（本地单用户，足够且避免
-# 多线程同时写 chroma 连接 / SQLite）
+# 多线程同时修改本地会话状态）
 _chat_lock = threading.Lock()
 
 # ⚠️ 曾经的死锁事故（2026-09-14，实测复现）：
@@ -169,18 +171,9 @@ def _sse(payload: dict) -> str:
 
 
 def _run_chat(sess, message: str, q: "queue.Queue") -> None:
-    """生产者：持锁跑完整个 RAG 流程，事件写入队列（详见 _chat_lock 处注释）。
-
-    跑在独立守护线程里，客户端是否断开都不影响它跑完，因此锁一定释放。
-    """
+    """问答请求加锁；事件投递和异常收尾复用同一个生产者。"""
     with _chat_lock:
-        try:
-            for event in sess.ask_stream(message):
-                q.put(event)
-        except Exception as e:                    # 网络/API 异常也要推给前端
-            q.put({"type": "error", "text": str(e)})
-        finally:
-            q.put(_END)                           # 哨兵：无论成败都要收尾
+        _run_stream(sess.ask_stream(message), q)
 
 
 def _run_stream(events, q: "queue.Queue") -> None:
@@ -416,6 +409,16 @@ def index():
 @app.get("/agent")
 def agent_page():
     return FileResponse(WEB_DIR / "agent.html")
+
+
+@app.get("/settings")
+def settings_page():
+    return FileResponse(WEB_DIR / "settings.html", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/health")
+def health():
+    return {"app": "tcm-rag-agent", "status": "ok"}
 
 
 def _port_in_use(host: str, port: int) -> bool:
