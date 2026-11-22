@@ -206,6 +206,33 @@ def test_invalid_token_stops_before_processing_other_documents(settings_client, 
     assert "sk-test" not in str(state)
 
 
+def test_invalid_model_stops_build_before_other_documents(settings_client, store, monkeypatch):
+    from app import web_settings
+
+    for number in range(6):
+        (web_settings.BASE_DIR / "data" / f"extra-{number}.md").write_text(
+            "这是一份额外的工程测试文献资料。", encoding="utf-8"
+        )
+    calls = []
+
+    class InvalidModel(RuntimeError):
+        status_code = 422
+
+    def rejected(texts):
+        calls.append(texts)
+        raise InvalidModel("Input tag 'BAAI/bge-m3' does not match Jina models")
+
+    monkeypatch.setattr(store.embeddings, "embed_documents", rejected)
+    save(settings_client)
+    settings_client.post("/api/knowledge/build")
+    state = wait_finished(settings_client)
+    assert state["status"] == "failed"
+    assert state["total"] == 7
+    assert state["processed"] == state["failed"] == len(calls) == 1
+    assert "422" in state["message"]
+    assert "模型名称" in state["message"]
+
+
 def test_launcher_reuses_running_service(tmp_path, monkeypatch):
     from app import launcher
 

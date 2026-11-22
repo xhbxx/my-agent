@@ -22,6 +22,30 @@ def publish(store, text="甲概念的完整文献证据。", version="v1", sourc
     return task
 
 
+def test_rate_limit_retries_current_batch_without_losing_progress(store, monkeypatch):
+    from app.knowledge import store as store_module
+
+    original = store.embeddings.embed_documents
+    calls = []
+    waits = []
+
+    class RateLimited(RuntimeError):
+        status_code = 429
+
+    def embed(texts):
+        calls.append(list(texts))
+        if len(calls) == 1:
+            raise RateLimited("Token rate limit exceeded")
+        return original(texts)
+
+    monkeypatch.setattr(store.embeddings, "embed_documents", embed)
+    monkeypatch.setattr(store_module.time, "sleep", waits.append)
+    task = publish(store)
+    assert store.task(task)["status"] == "ready"
+    assert calls[0] == calls[1]
+    assert waits == [61.0]
+
+
 @pytest.mark.parametrize(
     "text", ["甲" * 500, "第一句。第二句！" * 80, "abc def\n" * 100, "甲乙丙🙂" * 100]
 )

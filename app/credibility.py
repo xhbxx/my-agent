@@ -143,35 +143,6 @@ def filter_chunk(text: str, min_keep: int = 40) -> tuple[str, dict]:
     return cleaned, info
 
 
-def filter_sources(items) -> tuple[list, list[dict]]:
-    """批量清洗 [(doc, score)]：返回（保留的，审计列表）。"""
-    out, audits = [], []
-    for doc, score in (items or []):
-        cleaned, info = filter_chunk(getattr(doc, "page_content", "") or "")
-        meta = getattr(doc, "metadata", {}) or {}
-        if info["rejected"]:
-            # 整块丢弃：只留审计，不喂给模型（并保留来源名便于解释）
-            audits.append({"source": meta.get("source", "?"),
-                           "chapter": meta.get("chapter", "?"),
-                           "level": info["level"],
-                           "label": level_label(info["level"]),
-                           "dropped": len(info["dropped"]),
-                           "rejected": True})
-            continue
-        try:
-            doc.page_content = cleaned          # 就地替换（doc 是本轮临时对象）
-        except Exception:
-            pass
-        audits.append({"source": meta.get("source", "?"),
-                       "chapter": meta.get("chapter", "?"),
-                       "level": info["level"],
-                       "label": level_label(info["level"]),
-                       "dropped": len(info["dropped"]),
-                       "rejected": False})
-        out.append((doc, score))
-    return out, audits
-
-
 # 注入提示词的约束块（与 scripts.py 里的话术块同一层，放在这里便于就近维护）
 CREDIBILITY_BLOCK = """【引用的可采信性筛选（引用前先过这一道）】
 典籍里夹着**迷信 / 传说 / 巫术性记载**（例如「中有小白虫，入人鼻必为虫颡」

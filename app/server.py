@@ -40,6 +40,7 @@ API 一览：
 import json
 import queue
 import threading
+import time
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
@@ -81,6 +82,52 @@ _chat_lock = threading.Lock()
 #   · Queue.get 加超时兜底，防止生产者线程意外死亡时前端干等。
 _CHAT_QUEUE_TIMEOUT = 180     # 单个事件最长等待（秒），超时即报错收尾
 _END = object()               # 队列哨兵：生产者跑完（成功/异常）都会放进来
+_generations = {}
+_generation_lock = threading.Lock()
+
+
+class GenerationStopped(Exception):
+    pass
+
+
+def _check_stopped(q):
+    if getattr(q, "cancelled", None) is not None and q.cancelled.is_set():
+        raise GenerationStopped()
+
+
+def _start_generation(conv_id, q, target, *arguments):
+    with _generation_lock:
+        if conv_id in _generations:
+            raise HTTPException(409, "当前会话的上一轮尚未退出，请稍后重试。")
+        q.cancelled = threading.Event()
+        _generations[conv_id] = q.cancelled
+
+    def run():
+        try:
+            _check_stopped(q)
+            target(*arguments, q)
+        except GenerationStopped:
+            q.put(_END)
+        finally:
+            with _generation_lock:
+                _generations.pop(conv_id, None)
+
+    try:
+        threading.Thread(target=run, daemon=True).start()
+    except Exception:
+        with _generation_lock:
+            _generations.pop(conv_id, None)
+        raise
+
+
+@app.post("/api/conversations/{conv_id}/stop")
+def stop_generation(conv_id: int):
+    _require_conv(conv_id)
+    with _generation_lock:
+        cancelled = _generations.get(conv_id)
+        if cancelled is not None:
+            cancelled.set()
+    return {"stopped": cancelled is not None}
 
 _memory = MemoryManager()
 
@@ -173,6 +220,7 @@ def _sse(payload: dict) -> str:
 def _run_chat(sess, message: str, q: "queue.Queue") -> None:
     """问答请求加锁；事件投递和异常收尾复用同一个生产者。"""
     with _chat_lock:
+        _check_stopped(q)
         _run_stream(sess.ask_stream(message), q)
 
 
@@ -184,36 +232,54 @@ def _run_stream(events, q: "queue.Queue") -> None:
     生成器惰性求值，跨线程传递安全）。
     """
     try:
-        for event in events:
+        while True:
+            _check_stopped(q)
+            try:
+                event = next(events)
+            except StopIteration:
+                break
+            _check_stopped(q)
             q.put(event)
+    except GenerationStopped:
+        pass
     except Exception as e:
         q.put({"type": "error", "text": str(e)})
     finally:
+        if hasattr(events, "close"):
+            events.close()
         q.put(_END)
 
 
 def _sse_stream(q, on_done):
     """消费者：把队列里的事件转成 SSE；结束/出错时回调 on_done 落库。"""
     answer_out, sources_out, safety_out = "", [], {}
-    while True:
-        try:
-            item = q.get(timeout=_CHAT_QUEUE_TIMEOUT)
-        except queue.Empty:
-            yield _sse({"type": "error",
-                        "text": f"生成超时（{_CHAT_QUEUE_TIMEOUT}s 无新事件）"})
-            break
-        if item is _END:
-            break
-        if item["type"] == "sources":
-            sources_out = item["sources"]
-        elif item["type"] == "safety":
-            # 安全判读随消息落库：否则用户刷新页面后提示就没了（安全信息不该
-            # 只在当轮可见）。多轮里若重复下发，取最后一次（覆盖式）。
-            safety_out = {k: v for k, v in item.items() if k != "type"}
-        elif item["type"] == "done":
-            answer_out = item["answer"]
-        yield _sse(item)
-    on_done(answer_out, sources_out, safety_out)
+    last_event = time.monotonic()
+    try:
+        while not getattr(q, "cancelled", threading.Event()).is_set():
+            try:
+                item = q.get(timeout=0.2)
+            except queue.Empty:
+                if time.monotonic() - last_event >= _CHAT_QUEUE_TIMEOUT:
+                    yield _sse({"type": "error", "text": "生成超时，请重试。"})
+                    break
+                continue
+            last_event = time.monotonic()
+            if item is _END:
+                break
+            if item["type"] == "sources":
+                sources_out = item["sources"]
+            elif item["type"] == "safety":
+                safety_out = {key: value for key, value in item.items() if key != "type"}
+            elif item["type"] == "delta":
+                answer_out += item["text"]
+            elif item["type"] == "done":
+                answer_out = item["answer"]
+            yield _sse(item)
+    finally:
+        if hasattr(q, "cancelled"):
+            q.cancelled.set()
+        if answer_out or sources_out or safety_out:
+            on_done(answer_out, sources_out, safety_out)
 
 
 # ---------- 问答模式（SSE）----------
@@ -231,7 +297,7 @@ def api_chat(conv_id: int, req: ChatReq):
     # RAGSession 现在直接从 SQLite 读三层记忆，无需缓存会话对象
     sess = RAGSession(conv_id=conv_id)
     q: "queue.Queue" = queue.Queue()
-    threading.Thread(target=_run_chat, args=(sess, message, q), daemon=True).start()
+    _start_generation(conv_id, q, _run_chat, sess, message)
 
     return StreamingResponse(
         _sse_stream(q, lambda a, s, sf: storage.add_message(conv_id, "assistant", a, s, sf)),
@@ -272,8 +338,7 @@ def api_agent_chat(conv_id: int, req: ChatReq):
     # 消费者只管把事件转 SSE —— 举一反三：同步生成器直连模式在客户端中途
     # 断开时同样会挂起在 yield 上（问答端点的死锁教训，见文件头注释）。
     q: "queue.Queue" = queue.Queue()
-    threading.Thread(target=_run_stream, args=(events, q),
-                     daemon=True).start()
+    _start_generation(conv_id, q, _run_stream, events)
 
     return StreamingResponse(
         _sse_stream(q, lambda a, s, sf: storage.add_message(conv_id, "assistant", a, s, sf)),
@@ -294,6 +359,7 @@ def _run_pipeline(conv_id: int, message: str, q: "queue.Queue") -> None:
 
     try:
         def on_step(node: str, delta: dict) -> None:
+            _check_stopped(q)
             # 节点级事件：前端可实时显示「食疗专家产出中…」
             brief = ""
             if node in ("diet_expert", "meridian_expert", "movement_expert"):
@@ -303,6 +369,7 @@ def _run_pipeline(conv_id: int, message: str, q: "queue.Queue") -> None:
             q.put({"type": "step", "node": node, "brief": brief})
 
         final = run_pipeline(conv_id, message, on_step=on_step)
+        _check_stopped(q)
         answer = final.get("final_answer") or render(final)
         # 安全判读卡：把接诊命中带给前端（与问答页同构）
         it = final.get("intake") or {}
@@ -334,8 +401,7 @@ def api_plan_chat(conv_id: int, req: ChatReq):
     _auto_title(conv_id, message)
 
     q: "queue.Queue" = queue.Queue()
-    threading.Thread(target=_run_pipeline, args=(conv_id, message, q),
-                     daemon=True).start()
+    _start_generation(conv_id, q, _run_pipeline, conv_id, message)
 
     return StreamingResponse(
         _sse_stream(q, lambda a, s, sf: storage.add_message(conv_id, "assistant", a, s, sf)),

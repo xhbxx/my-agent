@@ -70,7 +70,7 @@ class IndexBuild:
                 else:
                     message = f"已处理 {row['source']}"
                 self._update(processed=count, failed=failed, message=message)
-                if row.get("error_type") == "authentication":
+                if row.get("error_type") in {"authentication", "configuration"}:
                     self._update(status="failed", message=row["error"])
                     return
             self._update(

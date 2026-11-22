@@ -152,7 +152,8 @@ console.log(JSON.stringify({safety: out, sources: srcOut}));
 
 def _blocks(page: str) -> list[str]:
     html = (ROOT / page).read_text(encoding="utf-8")
-    return re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", html, re.S)
+    shared = (ROOT / "web/chat-controls.js").read_text(encoding="utf-8")
+    return [shared, *re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", html, re.S)]
 
 
 def syntax(page: str) -> bool:

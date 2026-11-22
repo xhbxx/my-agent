@@ -54,8 +54,17 @@ def ingest_documents(
                         "请在设置中核对向量模型的API地址与有效密钥，保存后重新建立知识库。"
                     ),
                 )
+            elif store is not None and getattr(error, "status_code", None) == 422:
+                row.update(
+                    error_type="configuration",
+                    error=(
+                        "向量服务拒绝了请求参数（422），已停止处理后续资料。"
+                        "请核对向量API地址和模型名称是否属于同一服务商。"
+                        "Jina地址不能使用BAAI/bge-m3；保存正确配置后重新建立知识库。"
+                    ),
+                )
         yield row
-        if row.get("error_type") == "authentication":
+        if row.get("error_type") in {"authentication", "configuration"}:
             return
 
 

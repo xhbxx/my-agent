@@ -148,7 +148,19 @@ class KnowledgeStore:
         encoded = []
         for start in range(0, len(incoming), 32):
             batch = incoming[start : start + 32]
-            encoded.extend(self.embeddings.embed_documents([p.page_content for p in batch]))
+            for attempt in range(4):
+                try:
+                    encoded.extend(self.embeddings.embed_documents([p.page_content for p in batch]))
+                    break
+                except Exception as error:
+                    if getattr(error, "status_code", None) != 429 or attempt == 3:
+                        raise
+                    headers = getattr(getattr(error, "response", None), "headers", {})
+                    try:
+                        delay = max(61.0, float(headers.get("retry-after", 0)))
+                    except (TypeError, ValueError):
+                        delay = 61.0
+                    time.sleep(min(delay, 120.0))
         new_vectors = np.asarray(encoded, dtype="float32")
         if (
             new_vectors.ndim != 2

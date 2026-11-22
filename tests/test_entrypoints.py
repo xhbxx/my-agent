@@ -1,5 +1,6 @@
-"""通过原有问答入口验证接线，模型使用明确的测试替身。"""
+"""通过应用入口验证接线，模型使用明确的测试替身。"""
 
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -107,6 +108,38 @@ def test_web_chat_sse_and_persistence(store, embeddings, chat_store, monkeypatch
         history = client.get(f"/api/conversations/{conv_id}/messages").json()
         assert history[-1]["role"] == "assistant"
         assert history[-1]["sources"][0]["chunk_id"] == "one"
+
+
+def test_plan_endpoint_streams_steps_and_persists_answer(chat_store, monkeypatch):
+    from app.multiagent import graph
+    from app.server import app
+
+    conversation = chat_store.create_conversation("方案测试")
+    expert_nodes = ["diet_expert", "meridian_expert", "movement_expert"]
+
+    def scripted_pipeline(conv_id, question, on_step):
+        assert conv_id == conversation["id"]
+        assert question == "生成测试调理方案"
+        for node in expert_nodes:
+            on_step(node, {"suggestions": ["示例建议"]})
+        return {"final_answer": "测试方案"}
+
+    monkeypatch.setattr(graph, "run_pipeline", scripted_pipeline)
+    with TestClient(app) as client:
+        response = client.post(
+            f"/api/plan/{conversation['id']}/chat", json={"message": "生成测试调理方案"}
+        )
+
+    assert response.status_code == 200
+    events = [
+        json.loads(line.removeprefix("data: "))
+        for line in response.text.splitlines()
+        if line.startswith("data: ")
+    ]
+    assert [event["node"] for event in events if event["type"] == "step"] == expert_nodes
+    assert not any(event["type"] == "error" for event in events)
+    assert events[-1] == {"type": "done", "answer": "测试方案"}
+    assert chat_store.get_messages(conversation["id"])[-1]["content"] == "测试方案"
 
 
 @pytest.mark.parametrize("supported", [True, False])

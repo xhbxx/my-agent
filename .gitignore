@@ -21,6 +21,10 @@ ocr_cache/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.ruff_cache/
+eval/report_*.json
+eval/report_*.md
+web/*-old.html
 
 # ===== Python 环境 =====
 .venv/
