@@ -5,6 +5,7 @@ authorize -> retrieve -> generate -> validate -> EXPLAIN -> confirm/revalidate
 """
 
 import asyncio
+import hashlib
 import threading
 import uuid
 from dataclasses import asdict
@@ -20,7 +21,15 @@ from .skills import get_skill
 
 
 class AnalysisService:
-    def __init__(self, settings, system_app=None, model=None):
+    def __init__(
+        self,
+        settings,
+        system_app=None,
+        model=None,
+        *,
+        retrieval_models=None,
+        knowledge_root=None,
+    ):
         self.settings = settings
         self.audit = AuditStore(settings.audit_path)
         self.model = model or DataAgentModel(system_app, settings.model)
@@ -29,8 +38,9 @@ class AnalysisService:
         self.active = {}
         self.slots = asyncio.Semaphore(16)
         self.qdrant_path = getattr(settings, "qdrant_path", None)
+        self.retrieval_models = retrieval_models or {}
 
-        def vector_factory(name):
+        def vector_factory(name, embeddings=None):
             if self.qdrant_path:
                 from dbgpt.rag.embedding import EmbeddingFactory
                 from dbgpt_ext.storage.vector_store.qdrant_store import (
@@ -40,9 +50,10 @@ class AnalysisService:
 
                 # A directory per policy index avoids two clients opening the
                 # same local database. Local mode is for a single web worker.
-                embeddings = system_app.get_component(
-                    "embedding_factory", EmbeddingFactory
-                ).create()
+                if embeddings is None:
+                    embeddings = system_app.get_component(
+                        "embedding_factory", EmbeddingFactory
+                    ).create()
                 return QdrantStore(
                     QdrantVectorConfig(path=str(self.qdrant_path / name)),
                     name=name,
@@ -59,6 +70,15 @@ class AnalysisService:
                     policy,
                     vector_factory if system_app is not None else None,
                     owns_store=bool(self.qdrant_path),
+                    model_settings=self.retrieval_models,
+                    knowledge_path=(
+                        knowledge_root
+                        / hashlib.sha256(
+                            f"{settings.path}\n{name}\n{policy.url}\n{policy.schema}".encode()
+                        ).hexdigest()[:32]
+                        if knowledge_root is not None
+                        else None
+                    ),
                 )
         except Exception:
             self.close()

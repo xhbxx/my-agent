@@ -1,22 +1,35 @@
 # DATA-AGENT
 
-面向多数据源的安全数据分析 Agent，基于 DB-GPT 二次开发。用户通过自然语言描述问题，系统检索表结构与业务口径，生成 SQL，经权限和成本检查后只读执行，再返回表格、图表和解释。
+面向多数据源的安全数据分析 Agent。用户通过自然语言描述问题，系统检索表结构与业务口径，生成 SQL，经权限和成本检查后只读执行，再返回表格、图表和解释。
 
 ## 主要功能
 
-| 模块 | 当前实现 |
-| --- | --- |
-| 数据接入 | SQLite 演示源；PostgreSQL/MySQL 执行适配；CSV/XLSX 离线导入 DuckDB |
-| 业务知识检索 | 授权 Schema、指标定义和 PDF/DOCX/Markdown/TXT 文档；Qdrant 向量检索 + BM25 + RRF |
-| 自然语言分析 | 依据问题、检索证据和 Skill 生成 SQL；信息不足时允许返回澄清问题 |
-| SQL 治理 | SQLGlot AST、CTE/子查询作用域、表列白名单、函数限制与结果行数上限 |
-| 受控执行 | 专用连接池、只读执行、超时取消适配、EXPLAIN 与高成本查询二次确认 |
-| 安全结果 | 字段脱敏，页面、模型解释和导出共享同一份安全结果 |
-| Skill | 通用、维度对比和趋势三个分析说明文件，由用户选择 |
-| MCP | 通过 stdio 对外提供 retrieve_context 和 query_readonly，复用同一安全 API |
-| 工作台 | 中文简洁界面，SSE 执行阶段、SQL/证据/结果页签、图表、Markdown、CSV 导出和手机菜单 |
 
-当前是显式 Python 工作流；没有独立意图分类器、自动选择 Skill、完整 ReAct 工具循环或主动接入外部 MCP Server。界面上的管理入口部分复用原框架。
+| 模块         | 当前实现                                                                                 |
+| ------------ | ---------------------------------------------------------------------------------------- |
+| 数据接入     | SQLite 演示源；PostgreSQL/MySQL 执行适配；CSV/XLSX 离线导入 DuckDB                       |
+| 业务知识检索 | 授权 Schema、指标定义和 PDF/DOCX/Markdown/TXT 文档；Qdrant 向量检索 + BM25 + RRF         |
+| 自然语言分析 | 依据问题、检索证据和 Skill 生成 SQL；信息不足时允许返回澄清问题                          |
+| SQL 治理     | SQLGlot AST、CTE/子查询作用域、表列白名单、函数限制与结果行数上限                        |
+| 受控执行     | 专用连接池、只读执行、超时取消适配、EXPLAIN 与高成本查询二次确认                         |
+| 安全结果     | 字段脱敏，页面、模型解释和导出共享同一份安全结果                                         |
+| Skill        | 通用、维度对比和趋势三个分析说明文件，由用户选择                                         |
+| MCP          | 通过 stdio 对外提供 retrieve_context 和 query_readonly，复用同一安全 API                 |
+| 工作台       | 对话、数据源和知识库在同一页面切换，共享当前数据源；支持 SSE、SQL、表格、图表和 CSV 导出 |
+
+侧栏「数据源」复用框架的数据库接入功能。点击「添加数据源」，先从后端提供的数据库类型中选择，再填写该类型的连接信息、测试并保存。已有连接可以编辑、刷新表结构或删除。登记连接不等于开放查询；授权范围和知识文档仍由服务端配置维护。工作台可以查看授权表、指标与文档，并检索当前数据源的知识。
+
+侧栏「设置」可独立配置对话、向量和重排模型。填写 API 前缀或对应的完整接口地址、模型 ID 和 API Key，测试并保存后，下次相应操作生效。对话使用 `/chat/completions`；向量使用 `/embeddings`，在启用向量检索的数据源上使用，与 Qdrant 索引按模型隔离；重排使用 `/rerank`，未配置时保留原检索结果排序。远程模型请求跟随后端所在机器的系统代理或代理环境变量；本机模型直连。密钥加密保存在服务端，不会回显。
+
+侧栏「知识库 → 业务文档 → 添加文档」把 PDF、DOCX、Markdown 或 TXT 添加到当前数据源的检索范围（单文件不超过 10 MB），不会新建数据库表。使用外部向量或重排模型时，授权范围内的文档文本会发送给配置的服务商。管理功能使用启动发放的工作台令牌；多用户环境可配置独立的 `DATA_AGENT_ADMIN_TOKEN`（加入已授权的主体），普通分析令牌不会获得管理权限。
+
+## 实机截图
+
+
+
+![1795329828136](images/README/1795329828136.png)
+
+
 
 ## 核心流程
 
@@ -29,32 +42,29 @@
 
 ## Windows 本地启动
 
-需要 Python 环境和已安装的 DB-GPT 工作区依赖。已有本地环境时：
+首次运行需要 Python 3.11 和 `uv`。在项目根目录创建环境并安装本地包：
 
 ```powershell
-cd E:\DB-GPT
-.\examples\safe_analysis\start.ps1
+uv venv --python 3.11
+uv pip install --python .\.venv\Scripts\python.exe `
+  -e ./packages/dbgpt-core -e ./packages/dbgpt-client `
+  -e ./packages/dbgpt-ext -e ./packages/dbgpt-sandbox `
+  -e ./packages/dbgpt-accelerator/dbgpt-acc-auto `
+  -e './packages/dbgpt-serve[safe_analysis_mcp,safe_analysis_files,safe_analysis_databases,safe_analysis_qdrant]' `
+  -e ./packages/dbgpt-app
 ```
 
-若脚本执行策略阻止运行：
+默认配置从当前 PowerShell 会话读取模型密钥。用自己的 OpenAI 兼容服务凭据填写这两个环境变量，再启动：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\examples\safe_analysis\start.ps1
+$env:LLM_MODEL_API_KEY = '<对话模型密钥>'
+$env:EMBEDDING_MODEL_API_KEY = '<向量模型密钥>'
+.\start-data-agent.cmd
 ```
 
-打开 http://127.0.0.1:5670/safe-analysis/，输入终端显示的工作台令牌。先点击“查看一条示例记录”检查数据库链路，再检查知识检索、输入自然语言问题。
+默认模型为 `gpt-4o-mini` 和 `text-embedding-3-small`。使用其他兼容服务时，可在启动前设置 `LLM_MODEL_API_BASE`、`EMBEDDING_MODEL_API_URL`、`LLM_MODEL_NAME` 和 `EMBEDDING_MODEL_NAME`。若在启动配置中更换对话模型名称，请同步更新 `configs/safe-analysis.example.json` 的 `model`，或启动后在工作台「设置」中保存对应模型。
 
-工作台令牌与模型 API key 不同。令牌确认用户身份和可访问数据源；模型密钥仅配置在服务端。
-
-已有配置的本地用户继续使用 configs/dbgpt-proxy-openai.toml。仓库发布版该文件不包含个人密钥；新环境可参考 configs/data-agent.example.toml，通过环境变量配置模型。示例模型名称必须与 configs/safe-analysis.example.json 的 model 对应。
-
-本地补充模块依赖：
-
-```powershell
-uv pip install --python .venv/Scripts/python.exe "sqlglot>=28,<31" "rank-bm25>=0.2,<0.3" "qdrant-client>=1.17.1,<2"
-```
-
-首次完整安装仍需安装原框架工作区依赖，参见 [上游安装说明](README.DBGPT.md)。当前 uv.lock 尚未同步新增可选依赖，已装环境用已安装 CLI 启动；不要直接假设冻结锁文件包含新模块。
+服务启动后打开 http://127.0.0.1:5670/，在左侧进入分析、数据源、知识库或设置。首次启动会生成 10,000 行合成销售数据，选一个预设问题即可试用。使用 `Ctrl+C` 停止服务。
 
 ## Docker 启动
 
@@ -71,7 +81,7 @@ docker compose --env-file docker/data-agent/.env -f docker/data-agent/compose.ya
 docker compose --env-file docker/data-agent/.env -f docker/data-agent/compose.yaml logs -f
 ```
 
-访问 http://127.0.0.1:5670/safe-analysis/。默认只绑定本机端口，演示数据、Qdrant 索引、审计和框架状态写入命名卷。
+容器默认只向本机发布 5670 端口，供带凭据的 API/MCP 客户端使用；本机免输入的浏览器工作台请用上面的 Windows 一键启动。演示数据、Qdrant 索引、审计和框架状态写入命名卷。
 
 构建两个用途的本地镜像：
 
@@ -94,20 +104,23 @@ MCP 模式不要加 -t；令牌留空自动生成时，先将 Web 日志中的�
 docker compose --env-file docker/data-agent/.env -f docker/data-agent/compose.yaml down
 ```
 
-构建状态：已提供 Web/MCP Docker 目标与 Compose 配置，但镜像构建尚未成功。直接访问 Docker Hub 时认证服务超时，改用缓存镜像后仍在安装系统依赖时连接中断；目前按用户要求停止构建。尚未完成容器启动验收或发布到镜像仓库，部署文件需后续验证。
+本版本提供 Web/MCP Docker 构建目标和 Compose 配置。发布验证覆盖 Compose 配置解析，容器构建及启动尚未验收。
 
 ## 目录与阅读顺序
 
-| 位置 | 职责 |
-| --- | --- |
-| packages/dbgpt-serve/src/dbgpt_serve/safe_analysis/service.py | 主流程，建议最先阅读 |
-| 同目录 retrieval.py / knowledge.py | 混合检索、文档解析 |
-| 同目录 model.py / skills.py / skills/ | 模型适配与分析 Skill |
-| 同目录 guard.py / executor.py / audit.py / results.py | 校验、执行、确认、审计与结果处理 |
-| 同目录 mcp_server.py | MCP → 安全 HTTP API 适配 |
-| packages/dbgpt-app/src/dbgpt_app/openapi/api_v1/safe_analysis_api.py | HTTP/SSE 接口 |
-| packages/dbgpt-app/src/dbgpt_app/safe_analysis_web/ | DATA-AGENT 工作台 |
-| docker/data-agent/ | Dockerfile、Compose、启动入口及环境变量模板 |
+
+| 位置                                                                 | 职责                                        |
+| -------------------------------------------------------------------- | ------------------------------------------- |
+| packages/dbgpt-serve/src/dbgpt_serve/safe_analysis/service.py        | 主流程，建议最先阅读                        |
+| 同目录 retrieval.py / knowledge.py                                   | 混合检索、文档解析                          |
+| 同目录 model.py / skills.py / skills/                                | 模型适配与分析 Skill                        |
+| 同目录 guard.py / executor.py / audit.py / results.py                | 校验、执行、确认、审计与结果处理            |
+| 同目录 mcp_server.py                                                 | MCP → 安全 HTTP API 适配                   |
+| packages/dbgpt-app/src/dbgpt_app/openapi/api_v1/safe_analysis_api.py | HTTP/SSE 接口                               |
+| packages/dbgpt-app/src/dbgpt_app/safe_analysis_web/                  | DATA-AGENT 工作台                           |
+| docker/data-agent/                                                   | Dockerfile、Compose、启动入口及环境变量模板 |
+
+工作台的 HTML、CSS、JavaScript 和数据库图标由 Python 后端直接提供，Windows 启动无需构建 `web/`。
 
 - [运行与阅读指南](learn/SAFE_ANALYSIS_GUIDE_CN.md)
 - [接口文档](learn/SAFE_ANALYSIS_API_CN.md)
@@ -115,12 +128,12 @@ docker compose --env-file docker/data-agent/.env -f docker/data-agent/compose.ya
 
 ## 验证与边界
 
-新增安全分析测试曾在本地通过 49 项，覆盖 SQL 拦截、只读执行、确认流程、HTTP/SSE、文件解析、MCP 与真实 Qdrant 本地持久化。浏览器预览验证过桌面和手机操作，使用固定测试模型和合成数据，不能据此宣称生产模型正确率、真实业务库性能或线上并发能力。
+本地通过 79 项安全分析测试，覆盖 SQL 拦截、只读执行、确认流程、HTTP/SSE、数据库图标、文件解析、MCP 与 Qdrant 本地持久化。浏览器预览使用固定测试模型和合成数据。
 
-默认演示库有 10,000 行合成数据。PostgreSQL/MySQL 需真实环境联调；只读账号和数据库安全视图由管理员配置。Qdrant 本地模式用于单 Web 进程，服务端部署与 Dashboard 需另行配置。PDF 扫描件 OCR、旧版 .doc、在线上传和多租户登录不属于新增工作台已交付能力。
+默认演示库有 10,000 行合成数据。PostgreSQL/MySQL 需真实环境联调，只读账号和数据库安全视图由管理员配置。Qdrant 本地模式用于单 Web 进程。业务文档上传支持带可提取文本的 PDF、DOCX、Markdown 和 TXT。
 
 ## 安全与开源归属
 
 不要提交 .env、个人 API key、工作台令牌、上传数据、运行数据库及日志。Docker 构建不复制个人模型配置；Compose 通过运行时环境变量传入密钥。
 
-本项目基于 [DB-GPT](https://github.com/eosphoros-ai/DB-GPT) 开发，保留原框架包名、版权和 [MIT License](LICENSE)。[原项目 README](README.DBGPT.md) 保留上游介绍与安装资料。
+DATA-AGENT 基于 [DB-GPT](https://github.com/eosphoros-ai/DB-GPT) 开发，保留原框架版权和 [MIT License](LICENSE)。

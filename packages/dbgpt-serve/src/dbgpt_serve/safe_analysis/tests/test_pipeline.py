@@ -60,6 +60,8 @@ def policy(tmp_path):
         "WITH t AS (SELECT amount FROM sales) SELECT AVG(amount) FROM t",
         "SELECT s.region, SUM(s.amount) FROM sales s GROUP BY s.region",
         "SELECT id FROM sales WHERE amount > (SELECT AVG(amount) FROM sales)",
+        "SELECT id FROM sales WHERE amount >= 10 "
+        "AND (region = 'East' OR region = 'West')",
         "SELECT id FROM sales UNION ALL SELECT id FROM sales",
         "SELECT id FROM sales ORDER BY id LIMIT 1",
     ],

@@ -114,7 +114,8 @@ def _validate(sql: str, policy: SourcePolicy) -> ValidatedQuery:
             raise AnalysisError("SQL 包含写入、锁或不支持的高风险语法")
         if isinstance(node, exp.With) and node.args.get("recursive"):
             raise AnalysisError("不允许递归 CTE")
-        if isinstance(node, exp.Func):
+        # SQLGlot also classifies these boolean operators as Func nodes.
+        if isinstance(node, exp.Func) and not isinstance(node, (exp.And, exp.Or)):
             name = (
                 node.name.upper()
                 if isinstance(node, exp.Anonymous)

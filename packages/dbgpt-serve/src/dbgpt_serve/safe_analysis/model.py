@@ -1,4 +1,4 @@
-"""DB-GPT's existing worker/model config is the only model provider adapter."""
+"""Use a workbench override when configured, otherwise the DB-GPT worker."""
 
 import json
 
@@ -9,8 +9,14 @@ class DataAgentModel:
     def __init__(self, system_app, model):
         self.system_app = system_app
         self.model = model
+        self.overrides = None
 
     async def _generate(self, system, user):
+        config = self.overrides.current if self.overrides else None
+        if config:
+            from .management import complete
+
+            return await complete(config, system, user)
         if not self.model or self.system_app is None:
             raise AnalysisError("请在 DATA-AGENT 配置中选择已注册的 model")
         from dbgpt.component import ComponentType

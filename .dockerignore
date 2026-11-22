@@ -18,6 +18,7 @@ docs/node_modules/
 build/
 docs/build/
 docs/Dockerfile-deploy
+.uv-cache/
 .tmp-*/
 .impeccable/
 python_uploads/

@@ -8,8 +8,12 @@ $repoPath = (Resolve-Path (Join-Path $PSScriptRoot "../..")).Path
 Set-Location -LiteralPath $repoPath
 $pythonPath = Join-Path $repoPath ".venv/Scripts/python.exe"
 $commandPath = Join-Path $repoPath ".venv/Scripts/dbgpt.exe"
-if (-not (Test-Path -LiteralPath $commandPath)) {
+if (-not (Test-Path -LiteralPath $pythonPath -PathType Leaf) -or
+    -not (Test-Path -LiteralPath $commandPath -PathType Leaf)) {
     throw "DATA-AGENT environment is missing. Install the backend into .venv first."
+}
+if (-not (Test-Path -LiteralPath $Config -PathType Leaf)) {
+    throw "DATA-AGENT config file not found: $Config"
 }
 
 & $pythonPath (Join-Path $PSScriptRoot "setup_demo.py")
@@ -24,10 +28,10 @@ if (-not $env:DATA_AGENT_SALES_URL) {
 if (-not $env:DATA_AGENT_TOKEN) {
     $env:DATA_AGENT_TOKEN = [guid]::NewGuid().ToString("N") + [guid]::NewGuid().ToString("N")
 }
+$env:DATA_AGENT_LOCAL_UI = "1"
 
 Write-Host ""
-Write-Host "DATA-AGENT Workbench: http://127.0.0.1:5670/safe-analysis/" -ForegroundColor Cyan
-Write-Host "Paste this workbench token into the browser (not your model API key):"
-Write-Host $env:DATA_AGENT_TOKEN -ForegroundColor Yellow
+Write-Host "DATA-AGENT Workbench: http://127.0.0.1:5670/" -ForegroundColor Cyan
 Write-Host ""
 & $commandPath start webserver --config $Config
+exit $LASTEXITCODE

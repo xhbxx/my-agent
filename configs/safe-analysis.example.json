@@ -1,5 +1,5 @@
 {
-  "model": "gemini-3.8-flash-tiered",
+  "model": "gpt-4o-mini",
   "qdrant_path": "../data/safe-analysis-qdrant",
   "audit_file": "../data/safe-analysis-audit.sqlite3",
   "principals": [
@@ -27,7 +27,10 @@
         "有效销售额 = SUM(amount)，只统计 status = 'completed' 的记录。",
         "区域销售额按 region 分组；日期筛选使用 sale_date，采用 YYYY-MM-DD 格式。"
       ],
-      "knowledge_files": ["../examples/safe_analysis/metrics.md"],
+      "knowledge_files": [
+        "../examples/safe_analysis/metrics.md",
+        "../examples/safe_analysis/销售查询示例.md"
+      ],
       "blocked_columns": ["customer_email", "customer_phone"],
       "masked_labels": ["email", "phone", "customer_email", "customer_phone"],
       "max_rows": 200,

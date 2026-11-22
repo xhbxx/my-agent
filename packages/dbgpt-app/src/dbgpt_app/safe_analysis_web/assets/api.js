@@ -10,17 +10,30 @@ async function checkResponse(response) {
   throw new Error(typeof message === 'string' ? message : `请求失败（${response.status}），请检查服务是否启动。`);
 }
 
-export function createAPI(token) {
-  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+export function createAPI() {
+  const headers = { 'X-Data-Agent-Local': '1', 'Content-Type': 'application/json' };
   return {
+    async management(path, init = {}) {
+      const response = await fetch(`${PREFIX}/manage/${path}`, {
+        ...init, headers: { ...headers, ...init.headers },
+      });
+      await checkResponse(response);
+      return response.json();
+    },
     async sources() {
       const response = await fetch(`${PREFIX}/sources`, { headers });
       await checkResponse(response);
       return response.json();
     },
-    async context(source, question) {
+    async document(source, filename, signal) {
+      const query = new URLSearchParams({ source, filename });
+      const response = await fetch(`${PREFIX}/documents?${query}`, { headers, signal });
+      await checkResponse(response);
+      return response.json();
+    },
+    async context(source, question, signal) {
       const response = await fetch(`${PREFIX}/context`, {
-        method: 'POST', headers, body: JSON.stringify({ source, question }),
+        method: 'POST', headers, body: JSON.stringify({ source, question }), signal,
       });
       await checkResponse(response);
       return response.json();

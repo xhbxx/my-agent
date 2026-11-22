@@ -16,7 +16,7 @@ from dbgpt.configs.model_config import (
     STATIC_MESSAGE_IMG_PATH,
 )
 from dbgpt.util.fastapi import build_cors_config, create_app, replace_router
-from dbgpt.util.i18n_utils import _, set_default_language
+from dbgpt.util.i18n_utils import set_default_language
 from dbgpt.util.parameter_utils import _get_dict_from_obj
 from dbgpt.util.system_utils import get_system_info
 from dbgpt.util.tracer import SpanType, SpanTypeRunName, initialize_tracer, root_tracer
@@ -41,8 +41,8 @@ ROOT_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fi
 sys.path.append(ROOT_PATH)
 
 app = create_app(
-    title=_("DB-GPT Open API"),
-    description=_("DB-GPT Open API"),
+    title="DATA-AGENT API",
+    description="DATA-AGENT API",
     version=version,
     openapi_tags=[],
 )
@@ -73,6 +73,7 @@ def mount_routers(app: FastAPI):
     )
     from dbgpt_app.openapi.api_v2 import router as api_v2
     from dbgpt_app.safe_analysis_web.routes import router as safe_analysis_ui
+    from dbgpt_app.openapi.api_v1.workbench_management_api import router as workbench_management
     from dbgpt_serve.agent.app.controller import router as gpts_v1
     from dbgpt_serve.agent.app.endpoints import router as app_v2
 
@@ -86,6 +87,7 @@ def mount_routers(app: FastAPI):
     app.include_router(examples_router, prefix="/api", tags=["Examples"])
     app.include_router(agentic_data_api, prefix="/api", tags=["AgenticData"])
     app.include_router(safe_analysis_router, prefix="/api", tags=["SafeAnalysis"])
+    app.include_router(workbench_management, prefix="/api", tags=["WorkbenchManagement"])
     app.include_router(safe_analysis_ui)
     app.add_event_handler("shutdown", lambda: close_safe_analysis(app))
 
@@ -98,49 +100,12 @@ def mount_routers(app: FastAPI):
     app.include_router(recommend_question_v1, prefix="/api", tags=["RecommendQuestion"])
 
 
-def mount_static_files(app: FastAPI, param: ApplicationConfig):
-    package_dir = os.path.dirname(os.path.abspath(__file__))
-    if param.service.web.new_web_ui:
-        static_file_path = os.path.join(package_dir, "static", "web")
-    else:
-        static_file_path = os.path.join(package_dir, "static", "old_web")
-
+def mount_static_files(app: FastAPI):
     os.makedirs(STATIC_MESSAGE_IMG_PATH, exist_ok=True)
     app.mount(
         "/images",
         StaticFiles(directory=STATIC_MESSAGE_IMG_PATH, html=True),
         name="static2",
-    )
-    app.mount(
-        "/_next/static", StaticFiles(directory=static_file_path + "/_next/static")
-    )
-
-    # Serve the Next.js dynamic route page for /share/{token}.
-    # Next.js static export produces share/[token]/index.html (literal directory
-    # name "[token]"), but FastAPI StaticFiles cannot resolve dynamic segments.
-    # Register explicit routes *before* the catch-all StaticFiles mount so that
-    # /share/<any-token> is served correctly.
-    from fastapi import HTTPException
-    from fastapi.responses import FileResponse
-
-    share_html = os.path.join(static_file_path, "share", "[token]", "index.html")
-
-    @app.get("/share/{token}")
-    @app.get("/share/{token}/")
-    async def _share_page_fallback(token: str):
-        if os.path.isfile(share_html):
-            return FileResponse(share_html, media_type="text/html")
-        raise HTTPException(status_code=404, detail="Page not found")
-
-    from dbgpt_app.safe_analysis_web.routes import mount_home
-
-    mount_home(app, static_file_path)
-    app.mount("/", StaticFiles(directory=static_file_path, html=True), name="static")
-
-    app.mount(
-        "/swagger_static",
-        StaticFiles(directory=static_file_path),
-        name="swagger_static",
     )
 
 
@@ -261,7 +226,7 @@ def initialize_app(param: ApplicationConfig, args: List[str] = None):
             system_app=system_app,
         )
 
-    mount_static_files(app, param)
+    mount_static_files(app)
 
     # Before start, after on_init
     system_app.before_start()

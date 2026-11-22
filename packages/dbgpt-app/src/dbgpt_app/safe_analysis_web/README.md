@@ -1,12 +1,12 @@
 # DATA-AGENT 数据分析工作台维护说明
 
-DATA-AGENT 是基于 DB-GPT 框架的自有数据分析工作台，入口为 `/safe-analysis/`。页面采用用户选定的 Linear 风格：浅灰、紧凑、细分隔线。桌面布局为左侧数据范围、右侧问答与结果，使用中文浅色界面；启动、令牌配置、示例数据库与接口调用见 [安全分析运行与阅读指南](../../../../../learn/SAFE_ANALYSIS_GUIDE_CN.md)。
+DATA-AGENT 的工作台入口为 `/`。左侧统一选择数据源，右侧可以切换分析、授权表字段和知识库。启动与配置见 [安全分析运行与阅读指南](../../../../../learn/SAFE_ANALYSIS_GUIDE_CN.md)。
 
 ## 模块职责
 
 | 文件 | 职责 |
 | --- | --- |
-| `routes.py` | 同源页面和静态资源路由、资源白名单与 CSP；启用安全分析配置后首页跳转到本页，`/?classic=1` 访问原版首页。 |
+| `routes.py` | 提供工作台首页、静态资源白名单与 CSP。 |
 | `assets/index.html` | 导航、连接表单、数据范围、提问、执行确认和结果页签的语义结构。 |
 | `assets/app.css` | 页面配色、字体、布局、交互状态和窄屏适配。 |
 | `assets/app.js` | 连接与会话状态、提交与停止、确认执行、页签和事件反馈。 |
@@ -17,7 +17,7 @@ DATA-AGENT 是基于 DB-GPT 框架的自有数据分析工作台，入口为 `/s
 
 ## 产品品牌与局部视觉系统
 
-本页面以 DATA-AGENT 为产品品牌，使用内联 SVG 数据标记与本地 `assets/favicon.svg`，不再复用 `/logo_zh_latest.png`。底层框架仍为 DB-GPT，包名、运行命令、框架归属与版权保留；新自有环境变量采用 `DATA_AGENT_*` 命名。通过同源链接进入原数据源、知识库、Skills 与原版对话页面。
+侧栏和浏览器标签共用 `assets/favicon.svg` 品牌图标。分析、数据源和知识库是同一页面内的视图。Skill 在分析表单中选择。
 
 本页是独立静态实现，没有直接加载原 React/Ant Design 组件。局部样式以 `assets/app.css` 为准：正文 14px，页标题 20px，普通标题 16px，辅助文字 12–13px；主强调为紫靛色 `#5356c8`，通过细分隔线和浅底色组织层次，不使用阴影；按钮圆角 6px，字段与表格 8px，确认面板 10px。窄屏规则在 1200px、900px、680px 断点调整布局，移动图表用横向滚动保留 12px 标签与 640px 最小图宽。
 
@@ -29,7 +29,7 @@ DATA-AGENT 是基于 DB-GPT 框架的自有数据分析工作台，入口为 `/s
 
 接口定义见 `../openapi/api_v1/safe_analysis_api.py`，前端统一调用 `/api/v1/safe-analysis` 下的真实接口：
 
-- `GET /sources`：当前令牌授权的数据源、可见表字段、指标与检索状态。
+- `GET /sources`：当前令牌授权的数据源、可见表字段、指标、文档名称与检索状态。
 - `POST /context`：当前问题的实际检索证据。
 - `POST /query`：分析请求，通过 SSE 返回阶段、SQL、结果、解释、风险确认或错误。
 - `POST /requests/{request_id}/cancel`：请求服务端取消执行。

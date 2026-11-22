@@ -3,12 +3,15 @@
 import asyncio
 import json
 import logging
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from dbgpt_serve.safe_analysis.contracts import AnalysisError
+
+from .workbench_access import workbench_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/v1/safe-analysis")
@@ -49,12 +52,13 @@ async def get_service(request: Request):
 
 
 async def get_principal(
+    request: Request,
     authorization: str = Header(default=""),
     service=Depends(get_service),
 ):
-    scheme, _, token = authorization.partition(" ")
-    if scheme.lower() != "bearer" or not token:
-        raise HTTPException(401, "需要安全分析访问令牌")
+    token = workbench_token(request, authorization)
+    if not token:
+        raise HTTPException(401, "请用一键启动文件启动，然后在本机打开工作台")
     try:
         return service.settings.authenticate(token)
     except AnalysisError:
@@ -62,19 +66,34 @@ async def get_principal(
 
 
 @router.get("/sources")
-async def sources(service=Depends(get_service), principal=Depends(get_principal)):
+async def sources(
+    request: Request,
+    service=Depends(get_service),
+    principal=Depends(get_principal),
+    authorization: str = Header(default=""),
+):
     from dbgpt_serve.safe_analysis.guard import visible_schema
+    from dbgpt_serve.safe_analysis.management import is_manager
 
     names = [name for name in principal.sources if name in service.settings.sources]
     return {
         "sources": names,
-        "model": service.settings.model,
+        "can_manage": is_manager(workbench_token(request, authorization)),
+        "model": (
+            service.model_settings.public(service.settings.model)["model"]
+            if getattr(service, "model_settings", None)
+            else service.settings.model
+        ),
         "details": [
             {
                 "name": name,
                 "dialect": service.settings.sources[name].dialect,
                 "tables": visible_schema(service.settings.sources[name]),
                 "metrics": service.settings.sources[name].metrics,
+                "documents": [
+                    Path(filename).name
+                    for filename in service.retrievers[name].document_paths()
+                ],
                 "retrieval": (
                     "Qdrant + BM25 + RRF"
                     if service.settings.sources[name].vector and service.qdrant_path
@@ -82,10 +101,37 @@ async def sources(service=Depends(get_service), principal=Depends(get_principal)
                     if service.settings.sources[name].vector
                     else "BM25"
                 ),
-                "index_ready": service.retrievers[name]._store is not None,
+                "index_ready": service.retrievers[name].index_ready,
+                "can_upload": service.retrievers[name].knowledge_path is not None,
             }
             for name in names
         ],
+    }
+
+
+@router.get("/documents")
+async def document(
+    source: str,
+    filename: str,
+    service=Depends(get_service),
+    principal=Depends(get_principal),
+):
+    try:
+        service.settings.authorize(principal, source)
+    except AnalysisError:
+        raise HTTPException(403, "没有此数据源的访问权限") from None
+    prefix = f"来源: {filename}\n"
+    excerpts = [
+        item.content.removeprefix(prefix)
+        for item in service.retrievers[source].documents
+        if item.kind == "document" and item.content.startswith(prefix)
+    ]
+    if not excerpts:
+        raise HTTPException(404, "这个文档没有可预览的内容")
+    return {
+        "filename": filename,
+        "excerpt": excerpts[0],
+        "truncated": len(excerpts) > 1,
     }
 
 

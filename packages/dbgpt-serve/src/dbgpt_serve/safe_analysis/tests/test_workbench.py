@@ -95,26 +95,30 @@ async def test_hybrid_retrieval_with_real_qdrant(tmp_path):
         retriever.close()
 
 
-def test_workbench_routes_and_safe_asset_paths(tmp_path, monkeypatch):
-    from dbgpt_app.safe_analysis_web.routes import mount_home, router
+def test_workbench_routes_and_safe_asset_paths():
+    from dbgpt_app.safe_analysis_web.routes import DATABASE_ICONS, router
 
     app = FastAPI()
     app.include_router(router)
-    monkeypatch.setenv("DATA_AGENT_CONFIG", "enabled")
-    (tmp_path / "index.html").write_text("Original DB-GPT", encoding="utf-8")
-    mount_home(app, tmp_path)
     with TestClient(app) as client:
-        assert (
-            client.get("/", follow_redirects=False).headers["location"]
-            == "/safe-analysis/"
-        )
-        assert client.get("/?classic=1").text == "Original DB-GPT"
-        page = client.get("/safe-analysis/")
-        assert page.status_code == 200 and "工作台令牌" in page.text
+        page = client.get("/")
+        assert page.status_code == 200 and "工作台令牌" not in page.text
+        assert page.text.count("data-preset=") == 3
+        assert "销售查询示例" in page.text
         assert "DATA-AGENT" in page.text and "DB-GPT" not in page.text
-        assert "/logo_zh_latest.png" not in page.text
+        assert client.get("/?classic=1").text == page.text
+        assert client.get("/safe-analysis/").text == page.text
+        assert 'id="view-sources"' in page.text
+        assert 'id="view-knowledge"' in page.text
+        assert "/construct/" not in page.text
         assert "Content-Security-Policy" in page.headers
         assert client.get("/safe-analysis/assets/app.js").status_code == 200
         assert client.get("/safe-analysis/assets/marked.umd.js").status_code == 200
         assert client.get("/safe-analysis/assets/favicon.svg").status_code == 200
         assert client.get("/safe-analysis/assets/not-allowed.txt").status_code == 404
+        for kind in sorted(DATABASE_ICONS):
+            icon = client.get(f"/safe-analysis/database-icons/{kind}")
+            assert icon.status_code == 200 and icon.headers["content-type"] == "image/png"
+        fallback = client.get("/safe-analysis/database-icons/unknown")
+        assert fallback.status_code == 200
+        assert fallback.headers["content-type"] == "image/svg+xml"

@@ -3,7 +3,7 @@ language = "${env:DBGPT_LANG:-zh}"
 encrypt_key = "${env:DATA_AGENT_ENCRYPT_KEY}"
 
 [service.web]
-host = "0.0.0.0"
+host = "127.0.0.1"
 port = 5670
 cors_allowed_origins = "http://localhost:5670,http://127.0.0.1:5670"
 

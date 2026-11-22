@@ -218,6 +218,11 @@ docs/superpowers/
 /.tmp-safe-analysis/
 /data/safe-analysis-*.sqlite3*
 /data/safe-analysis-qdrant/
+/data/data-agent-model.local.json
+/data/data-agent-model.local.key
+/data/data-agent-model.local.*.json
+/data/data-agent-model.local.*.key
+/data/data-agent-knowledge/
 /.tmp-ui/
 /.tmp-resume-eval-*/
 /python_uploads/

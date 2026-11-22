@@ -10,12 +10,8 @@
 新增模块把一条分析请求明确拆成身份、检索、生成、校验、确认、执行、结果处理七个阶段。
 它复用 DB-GPT 的模型服务和知识解析器，通过 DB-GPT 的 FastAPI 服务提供接口。
 
-这是**新增的可选安全入口**，没有宣称已经改造原有全部 Agent 工具。
-原有 `/api/v1/chat/react-agent` 和旧聊天页面仍使用原链路。
-启用新配置后，访问 `/safe-analysis/` 工作台，它调用 `/api/v1/safe-analysis/query`。
-首页会转到新工作台；`/?classic=1` 可返回原 DB-GPT 首页。
-不要把旧聊天入口当成新入口的安全替代。
-原有模拟用户请求头也没有用于新入口的身份认证。
+访问首页 `/` 进入 DATA-AGENT。分析工作台通过 `/api/v1/safe-analysis/query` 执行受控查询。
+侧栏的数据源与知识库共享当前选中的数据源和访问令牌，返回对话时保留已有分析结果。
 
 ## 2. 先建立整体印象
 
@@ -89,7 +85,7 @@ uv pip install --python .venv/Scripts/python.exe "sqlglot>=28,<31" "rank-bm25>=0
 powershell -ExecutionPolicy Bypass -File .\examples\safe_analysis\start.ps1
 ```
 
-等待服务启动后打开 **http://127.0.0.1:5670/safe-analysis/**，
+等待服务启动后打开 **http://127.0.0.1:5670/**，
 粘贴终端输出的工作台令牌，点击“连接工作台”。它不是模型 API key。
 模型和 Embedding 的供应商地址、key 仍在 `configs/dbgpt-proxy-openai.toml` 中配置。
 更换 TOML 可传 `-Config "configs/你的配置.toml"`；端口以该 TOML 为准。
@@ -295,7 +291,6 @@ DuckDB CSV/XLSX 导入、Markdown 解析、向量适配契约与 MCP 工具边�
 Qdrant 测试使用固定的测试 Embedding，没有调用你的模型供应商。
 前端 SSE 分块与 CRLF 解析通过 Node 检查；HTTP 页面可达不等于已经完成视觉验收。
 DATA-AGENT 改版后已在浏览器走通连接、示例查询、知识检索、高成本确认、表格、图表和 Markdown 解释。
-桌面与手机效果分别记录于 `.impeccable/review/desktop.png`、`mobile.png`。
 预览使用固定测试模型和合成数据，不能作为真实供应商 API 已联调的证据。
 
 ```powershell

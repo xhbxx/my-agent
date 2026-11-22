@@ -9,7 +9,7 @@
 - 认证失败返回 401，未启用或配置失败返回 503。
 - 查询开始前的参数或授权错误返回 400；流开始后的错误通过 error 事件返回。
 - 这是新增接口；与原 `/chat/react-agent` 的协议不兼容。
-- 浏览器工作台：`/safe-analysis/`，同源请求本接口，无需手工调用命令行。
+- 浏览器工作台：`/`，同源请求本接口，无需手工调用命令行。
 
 ## 1. GET /sources
 
@@ -23,12 +23,13 @@
     "name": "sales_demo", "dialect": "sqlite",
     "tables": {"sales_public": {"id": "INTEGER", "amount": "REAL"}},
     "metrics": ["有效销售额 = SUM(amount)，只统计 completed 记录"],
+    "documents": ["metrics.md"],
     "retrieval": "Qdrant + BM25 + RRF", "index_ready": false
   }]
 }
 ```
 
-`tables` 仅包含授权可见字段。`index_ready` 表示本进程已经完成索引加载，
+`tables` 仅包含授权可见字段。`documents` 仅返回当前数据源的文档名称。`index_ready` 表示本进程已经完成索引加载，
 不是独立服务健康检查；页面“检查知识检索”才会发起实际检索。
 
 ## 2. POST /context

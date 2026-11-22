@@ -1,3 +1,4 @@
+import os
 from functools import cache
 from typing import List, Optional, Union
 
@@ -64,6 +65,12 @@ async def check_api_key(
         assert res.status_code == 200
 
     """
+    if os.environ.get("DATA_AGENT_CONFIG"):
+        from dbgpt_serve.safe_analysis.management import is_manager
+
+        if auth is None or not is_manager(auth.credentials):
+            raise HTTPException(403, "当前令牌没有数据源管理权限")
+        return auth.credentials
     if service.config.api_keys:
         api_keys = _parse_api_keys(service.config.api_keys)
         if auth is None or (token := auth.credentials) not in api_keys:
